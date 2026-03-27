@@ -1,0 +1,37 @@
+@import './fonts.css';
+@import './tailwind.css';
+@import './theme.css';
+
+@layer components {
+  .premium-page {
+    @apply w-full space-y-7;
+  }
+
+  .premium-header {
+    @apply flex flex-col gap-1.5 sm:flex-row sm:items-end sm:justify-between;
+  }
+
+  .premium-panel {
+    @apply bg-card border border-border/80 rounded-2xl shadow-[0_6px_18px_rgba(15,23,42,0.06)] transition-all duration-200;
+  }
+
+  .premium-panel-soft {
+    @apply bg-card/80 border border-border/70 rounded-2xl backdrop-blur-sm;
+  }
+
+  .premium-kpi {
+    @apply bg-card border border-border/80 rounded-2xl shadow-[0_8px_24px_rgba(15,23,42,0.05)] p-5;
+  }
+
+  .premium-section-title {
+    @apply text-sm text-muted-foreground;
+  }
+
+  .premium-hover-lift {
+    @apply hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(15,23,42,0.10)];
+  }
+
+  .premium-hero {
+    @apply bg-card border border-border/80 rounded-2xl shadow-[0_6px_18px_rgba(15,23,42,0.06)] p-6 bg-gradient-to-r from-card via-card to-secondary;
+  }
+}
