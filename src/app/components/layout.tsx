@@ -12,6 +12,7 @@ import { AIChatWidget } from './ai-chat';
 import { paths } from '../paths';
 import { useSound, SoundToggleButton } from '../audio/sound-context';
 import { APP_TAGLINE } from '../config/app';
+import { firstNameOnly } from '../utils/display-name';
 
 export function Layout() {
   const { user, isAdmin, logout, switchRole } = useAuth();
@@ -150,10 +151,10 @@ export function Layout() {
             {/* User card */}
             <div className="flex items-center gap-3 p-3 mt-2 rounded-2xl bg-sidebar-accent">
               <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm" style={{ fontWeight: 600 }}>
-                {user.name.charAt(0)}
+                {firstNameOnly(user.name).charAt(0)}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm truncate text-sidebar-foreground" style={{ fontWeight: 500 }}>{user.name}</p>
+                <p className="text-sm truncate text-sidebar-foreground" style={{ fontWeight: 500 }}>{firstNameOnly(user.name)}</p>
                 <p className="text-[11px] text-sidebar-foreground/50 capitalize">{user.role}</p>
               </div>
               {!isAdmin && (
@@ -191,7 +192,7 @@ export function Layout() {
             </button>
             <div className="hidden sm:block">
               <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{isAdmin ? 'Admin Portal' : 'Student Portal'}</p>
-              <p className="text-sm truncate" style={{ fontWeight: 600 }}>Welcome, {user.name}</p>
+              <p className="text-sm truncate" style={{ fontWeight: 600 }}>Welcome, {firstNameOnly(user.name)}</p>
             </div>
             <p className="sm:hidden text-sm truncate" style={{ fontWeight: 600 }}>{isAdmin ? 'Admin' : 'Home'}</p>
           </div>

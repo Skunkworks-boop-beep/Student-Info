@@ -21,6 +21,7 @@ import { StatusBadge, PriorityBadge } from '../components/status-badge';
 import { formatDistanceToNow } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { motion, AnimatePresence } from 'motion/react';
+import { firstNameOnly } from '../utils/display-name';
 
 /** Only some thoughts include media — keeps the feed varied. */
 const THOUGHT_MEDIA: Partial<Record<string, string[]>> = {
@@ -190,11 +191,11 @@ function ThoughtCard({
                     className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-xs shrink-0"
                     style={{ fontWeight: 700 }}
                   >
-                    {(c.is_anonymous ? 'A' : c.user_name.charAt(0)).toUpperCase()}
+                    {(c.is_anonymous ? 'A' : firstNameOnly(c.user_name).charAt(0)).toUpperCase()}
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs truncate" style={{ fontWeight: 600 }}>
-                      {c.is_anonymous ? 'Anonymous Student' : c.user_name}
+                      {c.is_anonymous ? 'Anonymous Student' : firstNameOnly(c.user_name)}
                     </p>
                     <p className="text-[11px] text-muted-foreground">
                       {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}
@@ -293,7 +294,7 @@ export function ComplaintsPage() {
     .slice(0, 8)
     .map(c => ({
       id: c.id,
-      label: c.is_anonymous ? 'Anonymous' : c.user_name.split(' ')[0] ?? c.user_name,
+      label: c.is_anonymous ? 'Anonymous' : firstNameOnly(c.user_name),
       action: 'shared a thought',
       title: c.title.length > 48 ? `${c.title.slice(0, 48)}…` : c.title,
       time: formatDistanceToNow(new Date(c.created_at), { addSuffix: true }),
@@ -466,12 +467,12 @@ export function ComplaintsPage() {
             </p>
             <div className="flex flex-wrap gap-2">
               {activePreview.map(u => (
-                <div key={u.id} className="relative shrink-0" title={u.name}>
+                <div key={u.id} className="relative shrink-0" title={firstNameOnly(u.name)}>
                   <span
                     className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-[11px] ring-1 ring-border/50"
                     style={{ fontWeight: 700 }}
                   >
-                    {u.name.charAt(0)}
+                    {firstNameOnly(u.name).charAt(0)}
                   </span>
                   <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-card" />
                 </div>

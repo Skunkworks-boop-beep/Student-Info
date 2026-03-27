@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { Search, Zap, Ban, RotateCcw } from 'lucide-react';
 import { leaderboard } from '../data/mock-data';
+import { firstNameOnly } from '../utils/display-name';
 
 export function AdminUsersPage() {
   const [search, setSearch] = useState('');
-  const users = leaderboard.filter(u => u.name.toLowerCase().includes(search.toLowerCase()));
+  const users = leaderboard.filter(u =>
+    u.name.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="premium-page max-w-6xl">
@@ -27,10 +30,10 @@ export function AdminUsersPage() {
         {users.map(u => (
           <div key={u.id} className="flex items-center gap-4 p-4 border-b border-border last:border-0 hover:bg-accent/30 transition-colors">
             <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-sm" style={{ fontWeight: 600 }}>
-              {u.name.charAt(0)}
+              {firstNameOnly(u.name).charAt(0)}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm" style={{ fontWeight: 500 }}>{u.name}</p>
+              <p className="text-sm" style={{ fontWeight: 500 }}>{firstNameOnly(u.name)}</p>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1"><Zap className="w-3 h-3 text-primary" />{u.uni_xp} XP</span>
                 <span>·</span>

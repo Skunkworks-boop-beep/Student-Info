@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router';
 import { ArrowLeft, ArrowUp, MapPin, Send, MessageSquare } from 'lucide-react';
 import { paths } from '../paths';
 import { complaints } from '../data/mock-data';
+import { firstNameOnly } from '../utils/display-name';
 import { StatusBadge, PriorityBadge } from '../components/status-badge';
 import { StatusStepper } from '../components/status-stepper';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -34,7 +35,7 @@ export function ComplaintDetailPage() {
           <div className="flex-1">
             <h1 className="text-xl mb-2" style={{ fontWeight: 700 }}>{complaint.title}</h1>
             <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-              <span>{complaint.is_anonymous ? 'Anonymous' : complaint.user_name}</span>
+              <span>{complaint.is_anonymous ? 'Anonymous' : firstNameOnly(complaint.user_name)}</span>
               <span>·</span>
               <span>{format(new Date(complaint.created_at), 'MMM d, yyyy')}</span>
               <span>·</span>
@@ -95,9 +96,9 @@ export function ComplaintDetailPage() {
             <div key={c.id} className={`p-5 ${c.parent_id ? 'ml-8 border-l-2 border-primary/20' : ''}`}>
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs" style={{ fontWeight: 600 }}>
-                  {c.user_name.charAt(0)}
+                  {firstNameOnly(c.user_name).charAt(0)}
                 </div>
-                <span className="text-sm" style={{ fontWeight: 500 }}>{c.user_name}</span>
+                <span className="text-sm" style={{ fontWeight: 500 }}>{firstNameOnly(c.user_name)}</span>
                 <span className="text-xs text-muted-foreground">
                   {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}
                 </span>

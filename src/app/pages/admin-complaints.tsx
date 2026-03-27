@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Search, Filter, ChevronDown, MoreHorizontal, CheckCircle, Eye, Clock, Settings } from 'lucide-react';
 import { complaints, CATEGORIES, type Status, type Category } from '../data/mock-data';
+import { firstNameOnly } from '../utils/display-name';
 import { StatusBadge, PriorityBadge } from '../components/status-badge';
 import { format } from 'date-fns';
 
@@ -102,7 +103,7 @@ export function AdminComplaintsPage() {
                   </td>
                   <td className="p-4">
                     <p className="text-sm" style={{ fontWeight: 500 }}>{c.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{c.is_anonymous ? 'Anonymous' : c.user_name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{c.is_anonymous ? 'Anonymous' : firstNameOnly(c.user_name)}</p>
                   </td>
                   <td className="p-4 hidden sm:table-cell">
                     <span className="text-sm text-muted-foreground">{c.category}</span>

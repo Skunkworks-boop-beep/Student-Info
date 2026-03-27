@@ -16,6 +16,7 @@ import {
   Radio,
 } from 'lucide-react';
 import { complaints, leaderboard } from '../data/mock-data';
+import { firstNameOnly } from '../utils/display-name';
 import { StatusBadge, PriorityBadge } from '../components/status-badge';
 import { useAuth } from '../components/auth-context';
 import { motion } from 'motion/react';
@@ -118,11 +119,11 @@ export function DashboardPage() {
                       className={`w-14 h-14 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center text-xl sm:text-2xl shrink-0 border-2 border-[#6f7a5e]/40 dark:border-[#4a5c46]/60 bg-[#9faa8c]/25 dark:bg-[#2a3528]/50`}
                       style={{ fontWeight: 700 }}
                     >
-                      {user?.name?.charAt(0)}
+                      {firstNameOnly(user?.name).charAt(0)}
                     </div>
                     <div className="min-w-0">
                       <p className="text-lg sm:text-xl truncate" style={{ fontWeight: 700 }}>
-                        {user?.name}
+                        {firstNameOnly(user?.name)}
                       </p>
                       <p className="text-xs sm:text-sm text-muted-foreground capitalize">
                         {user?.role === 'admin' ? 'Admin console' : 'Student'} · Campus portal
@@ -179,11 +180,11 @@ export function DashboardPage() {
                           className={`w-8 h-8 rounded-full border border-[#6f7a5e]/35 dark:border-[#4a5c46]/50 bg-secondary flex items-center justify-center text-xs`}
                           style={{ fontWeight: 700 }}
                         >
-                          {s.name.charAt(0)}
+                          {firstNameOnly(s.name).charAt(0)}
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-xs truncate" style={{ fontWeight: 600 }}>
-                            {s.name}
+                            {firstNameOnly(s.name)}
                           </p>
                           <p className="text-[11px] text-muted-foreground font-mono">{s.uni_xp} XP</p>
                         </div>
@@ -298,7 +299,7 @@ export function DashboardPage() {
                           {item.title}
                         </p>
                         <p className="text-[11px] text-muted-foreground mt-0.5 font-mono">
-                          {item.user_name} · {item.category}
+                          {firstNameOnly(item.user_name)} · {item.category}
                         </p>
                       </div>
                       <div className="hidden sm:block shrink-0">

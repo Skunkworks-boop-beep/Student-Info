@@ -294,12 +294,16 @@ function buildCellIssueMap(): Map<string, CampusIssue[]> {
 
 const TOOLTIP_GAP = 12;
 const VIEW_EDGE_PAD = 8;
+/** Side inset (px) — matches `100vw - 24px` tooltip width (12px each side). */
+const TOOLTIP_H_GUTTER = 12;
 /** ~max tooltip height for flip logic (preview + list). */
 const TOOLTIP_EST_HEIGHT = 220;
+/** Full-bleed tooltip between gutters (no translateX); avoids left/right clipping on phones. */
+const NARROW_VIEWPORT_MAX = 640;
 
 /**
- * Fixed tooltip position: horizontal center on pointer, clamped to viewport;
- * vertical: show above pointer when space allows, otherwise below (avoids clipping on mobile).
+ * Fixed tooltip: on narrow screens, stretch between horizontal gutters (no -50% centering).
+ * On wider screens, center on pointer with `left` clamped using the same width as the box.
  */
 function getTooltipFixedStyle(clientX: number, clientY: number): CSSProperties {
   if (typeof window === 'undefined') {
@@ -311,34 +315,51 @@ function getTooltipFixedStyle(clientX: number, clientY: number): CSSProperties {
   }
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  const innerLeft = VIEW_EDGE_PAD;
-  const innerRight = vw - VIEW_EDGE_PAD;
   const innerTop = VIEW_EDGE_PAD;
   const innerBottom = vh - VIEW_EDGE_PAD;
-
-  const maxHalfWidth = Math.min(140, (innerRight - innerLeft) / 2);
-  const left = Math.min(Math.max(clientX, innerLeft + maxHalfWidth), innerRight - maxHalfWidth);
 
   const spaceAbove = clientY - innerTop;
   const spaceBelow = innerBottom - clientY;
   const placeAbove =
     spaceAbove >= TOOLTIP_EST_HEIGHT + TOOLTIP_GAP || (spaceAbove > spaceBelow && spaceAbove >= 96);
 
-  if (placeAbove) {
-    const cap = Math.max(120, spaceAbove - TOOLTIP_GAP);
+  const maxH = (available: number) => Math.min(Math.max(120, available - TOOLTIP_GAP), vh * 0.7);
+
+  if (vw <= NARROW_VIEWPORT_MAX) {
+    const cap = placeAbove ? maxH(spaceAbove) : maxH(spaceBelow);
     return {
-      left,
+      left: TOOLTIP_H_GUTTER,
+      right: TOOLTIP_H_GUTTER,
+      width: 'auto',
       top: clientY,
-      transform: `translate(-50%, calc(-100% - ${TOOLTIP_GAP}px))`,
-      maxHeight: Math.min(cap, vh * 0.7),
+      transform: placeAbove ? `translateY(calc(-100% - ${TOOLTIP_GAP}px))` : `translateY(${TOOLTIP_GAP}px)`,
+      maxHeight: cap,
+      boxSizing: 'border-box',
     };
   }
-  const capBelow = Math.max(120, spaceBelow - TOOLTIP_GAP);
+
+  /** Same width as Tailwind `min(100vw - 24px, 280px)` — center X must use this half-width. */
+  const tooltipW = Math.min(vw - 2 * TOOLTIP_H_GUTTER, 280);
+  const halfW = tooltipW / 2;
+  const left = Math.min(Math.max(clientX, TOOLTIP_H_GUTTER + halfW), vw - TOOLTIP_H_GUTTER - halfW);
+
+  if (placeAbove) {
+    return {
+      left,
+      width: tooltipW,
+      top: clientY,
+      transform: `translate(-50%, calc(-100% - ${TOOLTIP_GAP}px))`,
+      maxHeight: maxH(spaceAbove),
+      boxSizing: 'border-box',
+    };
+  }
   return {
     left,
+    width: tooltipW,
     top: clientY,
     transform: `translate(-50%, ${TOOLTIP_GAP}px)`,
-    maxHeight: Math.min(capBelow, vh * 0.7),
+    maxHeight: maxH(spaceBelow),
+    boxSizing: 'border-box',
   };
 }
 
@@ -528,7 +549,7 @@ export function CampusMapPage({ showHeader = true }: CampusMapPageProps) {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 4 }}
                     transition={{ duration: 0.12 }}
-                    className="pointer-events-none fixed z-[9999] w-[min(calc(100vw-24px),280px)] flex flex-col overflow-hidden"
+                    className="pointer-events-none fixed z-[9999] flex max-w-none flex-col overflow-hidden"
                     style={getTooltipFixedStyle(hover.x, hover.y)}
                   >
                     <div className="min-h-0 overflow-y-auto rounded-xl border-2 border-[#6f7a5e]/60 dark:border-[#4a5c46] bg-card/95 px-3 py-2.5 shadow-xl backdrop-blur-md">
