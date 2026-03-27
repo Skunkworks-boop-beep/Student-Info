@@ -292,6 +292,15 @@ function buildCellIssueMap(): Map<string, CampusIssue[]> {
   return map;
 }
 
+/** Keep hover tooltip centered on pointer without spilling past the viewport (mobile / edges). */
+function clampTooltipCenterX(clientX: number) {
+  if (typeof window === 'undefined') return clientX;
+  const vw = window.innerWidth;
+  const half = Math.min(140, (vw - 24) / 2);
+  const pad = 8;
+  return Math.min(Math.max(clientX, half + pad), vw - half - pad);
+}
+
 interface CampusMapPageProps {
   showHeader?: boolean;
 }
@@ -337,16 +346,19 @@ export function CampusMapPage({ showHeader = true }: CampusMapPageProps) {
         >
           <div className="absolute inset-0 bg-gradient-to-br from-[#5c6b4a]/12 via-transparent to-[#8b7355]/10 dark:from-[#2a3528]/40 dark:to-[#3d2a18]/30 pointer-events-none" />
 
-          {/* Map chrome — military / fun stencil vibe */}
-          <div className="absolute top-3 left-3 z-20 flex items-center gap-2 px-2.5 py-1 rounded-md border border-[#6f7a5e]/50 dark:border-[#4a5c46]/80 bg-card/90 backdrop-blur-sm">
-            <Crosshair className="w-3.5 h-3.5 text-[#5c6b4a] dark:text-[#8faa7a]" />
-            <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground">
-              Grid {GRID_COLS}×{GRID_ROWS} · campus ops
-            </span>
-          </div>
-
-          <div className="absolute top-3 right-3 z-20 text-[10px] font-mono uppercase tracking-wider text-muted-foreground/80">
-            Hover · preview · click · detail
+          {/* Map chrome — stack on narrow viewports so labels never overlap */}
+          <div className="absolute top-3 left-3 right-3 z-20 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 pointer-events-none">
+            <div className="flex min-w-0 items-center gap-2 self-start rounded-md border border-[#6f7a5e]/50 bg-card/90 px-2.5 py-1 backdrop-blur-sm dark:border-[#4a5c46]/80 sm:max-w-[min(100%,65%)]">
+              <Crosshair className="h-3.5 w-3.5 shrink-0 text-[#5c6b4a] dark:text-[#8faa7a]" />
+              <span className="truncate text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground sm:tracking-[0.2em]">
+                <span className="sm:hidden">Grid {GRID_COLS}×{GRID_ROWS} · ops</span>
+                <span className="hidden sm:inline">Grid {GRID_COLS}×{GRID_ROWS} · campus ops</span>
+              </span>
+            </div>
+            <p className="max-w-full shrink-0 self-start text-[10px] font-mono uppercase leading-snug tracking-wider text-muted-foreground/90 sm:max-w-[min(100%,48%)] sm:self-auto sm:text-right">
+              <span className="sm:hidden">Tap cell · preview · detail</span>
+              <span className="hidden sm:inline">Hover · preview · click · detail</span>
+            </p>
           </div>
 
           {/* Subtle coordinate grid lines (under cells) */}
@@ -477,7 +489,7 @@ export function CampusMapPage({ showHeader = true }: CampusMapPageProps) {
                     transition={{ duration: 0.12 }}
                     className="pointer-events-none fixed z-[9999] w-[min(calc(100vw-24px),280px)]"
                     style={{
-                      left: hover.x,
+                      left: clampTooltipCenterX(hover.x),
                       top: hover.y,
                       transform: 'translate(-50%, calc(-100% - 12px))',
                     }}
@@ -541,8 +553,8 @@ export function CampusMapPage({ showHeader = true }: CampusMapPageProps) {
 
           {selectedKey && selectedIssues.length > 0 ? (
             <div className="premium-panel premium-hover-lift p-5">
-              <div className="flex items-center justify-between gap-2 mb-3">
-                <div>
+              <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+                <div className="min-w-0">
                   <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Zone SITREP</p>
                   <p className="text-sm" style={{ fontWeight: 700 }}>
                     Grid {selectedKey.replace('-', ' × ')}
@@ -553,14 +565,14 @@ export function CampusMapPage({ showHeader = true }: CampusMapPageProps) {
                   </p>
                 </div>
                 <div
-                  className={`w-12 h-12 shrink-0 rounded-lg border-2 ${TACTICAL_TIERS[selectedTier ?? 0].className}`}
+                  className={`h-12 w-12 shrink-0 rounded-lg border-2 sm:ml-auto ${TACTICAL_TIERS[selectedTier ?? 0].className}`}
                 />
               </div>
               <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
                 {selectedIssues.map(iss => (
                   <article key={iss.id} className="rounded-xl border border-border/80 p-3 bg-secondary/30">
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <p className="text-sm" style={{ fontWeight: 600 }}>
+                    <div className="mb-1 flex items-start justify-between gap-2">
+                      <p className="min-w-0 flex-1 text-sm" style={{ fontWeight: 600 }}>
                         {iss.title}
                       </p>
                       <span
@@ -633,12 +645,12 @@ export function CampusMapPage({ showHeader = true }: CampusMapPageProps) {
                       play('tap');
                       setSelectedKey(key);
                     }}
-                    className={`w-full flex items-center gap-3 p-3 border-b border-border last:border-0 hover:bg-accent/50 transition-colors text-left ${
+                    className={`flex w-full items-center gap-3 border-b border-border p-3 text-left transition-colors last:border-0 hover:bg-accent/50 ${
                       selectedKey === key ? 'bg-secondary/50' : ''
                     }`}
                   >
-                    <div className={`w-8 h-8 shrink-0 rounded-md border-2 ${TACTICAL_TIERS[tier].className}`} />
-                    <span className="flex-1 text-sm">{b.name}</span>
+                    <div className={`h-8 w-8 shrink-0 rounded-md border-2 ${TACTICAL_TIERS[tier].className}`} />
+                    <span className="min-w-0 flex-1 truncate text-sm">{b.name}</span>
                     <span className="text-xs font-mono text-muted-foreground">{b.issues.length}</span>
                   </button>
                 );
