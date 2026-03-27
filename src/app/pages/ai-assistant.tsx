@@ -19,7 +19,7 @@ const STARTER_PROMPTS = [
 const COMMUNITY_RESPONSES = [
   {
     id: 'c1',
-    student: 'Aseel Khoury',
+    student: 'Aseel',
     role: 'Student Mentor',
     text: 'For grade appeals, include timeline + assignment rubric screenshots. This usually gets faster review.',
     upvotes: 23,
@@ -27,7 +27,7 @@ const COMMUNITY_RESPONSES = [
   },
   {
     id: 'c2',
-    student: 'Erik Muller',
+    student: 'Erik',
     role: 'Engineering Student',
     text: 'For IT complaints, mention exact lab room + affected devices. Admin asked us to always add this.',
     upvotes: 16,
@@ -35,7 +35,7 @@ const COMMUNITY_RESPONSES = [
   },
   {
     id: 'c3',
-    student: 'Lina Al-Rashid',
+    student: 'Lina',
     role: 'Student',
     text: 'If your complaint is urgent safety-related, mark High priority and link previous complaint IDs.',
     upvotes: 12,

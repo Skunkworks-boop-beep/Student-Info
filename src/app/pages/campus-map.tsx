@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { MapPin, Building2, BookOpen, Coffee, Bus, Shield, Crosshair, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -292,13 +292,54 @@ function buildCellIssueMap(): Map<string, CampusIssue[]> {
   return map;
 }
 
-/** Keep hover tooltip centered on pointer without spilling past the viewport (mobile / edges). */
-function clampTooltipCenterX(clientX: number) {
-  if (typeof window === 'undefined') return clientX;
+const TOOLTIP_GAP = 12;
+const VIEW_EDGE_PAD = 8;
+/** ~max tooltip height for flip logic (preview + list). */
+const TOOLTIP_EST_HEIGHT = 220;
+
+/**
+ * Fixed tooltip position: horizontal center on pointer, clamped to viewport;
+ * vertical: show above pointer when space allows, otherwise below (avoids clipping on mobile).
+ */
+function getTooltipFixedStyle(clientX: number, clientY: number): CSSProperties {
+  if (typeof window === 'undefined') {
+    return {
+      left: clientX,
+      top: clientY,
+      transform: 'translate(-50%, calc(-100% - 12px))',
+    };
+  }
   const vw = window.innerWidth;
-  const half = Math.min(140, (vw - 24) / 2);
-  const pad = 8;
-  return Math.min(Math.max(clientX, half + pad), vw - half - pad);
+  const vh = window.innerHeight;
+  const innerLeft = VIEW_EDGE_PAD;
+  const innerRight = vw - VIEW_EDGE_PAD;
+  const innerTop = VIEW_EDGE_PAD;
+  const innerBottom = vh - VIEW_EDGE_PAD;
+
+  const maxHalfWidth = Math.min(140, (innerRight - innerLeft) / 2);
+  const left = Math.min(Math.max(clientX, innerLeft + maxHalfWidth), innerRight - maxHalfWidth);
+
+  const spaceAbove = clientY - innerTop;
+  const spaceBelow = innerBottom - clientY;
+  const placeAbove =
+    spaceAbove >= TOOLTIP_EST_HEIGHT + TOOLTIP_GAP || (spaceAbove > spaceBelow && spaceAbove >= 96);
+
+  if (placeAbove) {
+    const cap = Math.max(120, spaceAbove - TOOLTIP_GAP);
+    return {
+      left,
+      top: clientY,
+      transform: `translate(-50%, calc(-100% - ${TOOLTIP_GAP}px))`,
+      maxHeight: Math.min(cap, vh * 0.7),
+    };
+  }
+  const capBelow = Math.max(120, spaceBelow - TOOLTIP_GAP);
+  return {
+    left,
+    top: clientY,
+    transform: `translate(-50%, ${TOOLTIP_GAP}px)`,
+    maxHeight: Math.min(capBelow, vh * 0.7),
+  };
 }
 
 interface CampusMapPageProps {
@@ -487,21 +528,17 @@ export function CampusMapPage({ showHeader = true }: CampusMapPageProps) {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 4 }}
                     transition={{ duration: 0.12 }}
-                    className="pointer-events-none fixed z-[9999] w-[min(calc(100vw-24px),280px)]"
-                    style={{
-                      left: clampTooltipCenterX(hover.x),
-                      top: hover.y,
-                      transform: 'translate(-50%, calc(-100% - 12px))',
-                    }}
+                    className="pointer-events-none fixed z-[9999] w-[min(calc(100vw-24px),280px)] flex flex-col overflow-hidden"
+                    style={getTooltipFixedStyle(hover.x, hover.y)}
                   >
-                    <div className="rounded-xl border-2 border-[#6f7a5e]/60 dark:border-[#4a5c46] bg-card/95 backdrop-blur-md shadow-xl px-3 py-2.5">
+                    <div className="min-h-0 overflow-y-auto rounded-xl border-2 border-[#6f7a5e]/60 dark:border-[#4a5c46] bg-card/95 px-3 py-2.5 shadow-xl backdrop-blur-md">
                       {hover.issues.length > 0 ? (
                         <>
-                          <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                            <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                          <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+                            <AlertTriangle className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" />
                             Zone {hover.key.replace('-', ' · ')} — signals
                           </p>
-                          <ul className="space-y-1.5 max-h-[180px] overflow-hidden">
+                          <ul className="max-h-[min(180px,40vh)] space-y-1.5 overflow-y-auto sm:max-h-[180px]">
                             {hover.issues.slice(0, 5).map(iss => (
                               <li key={iss.id} className="text-xs leading-snug border-l-2 border-primary/40 pl-2">
                                 <span style={{ fontWeight: 600 }}>{iss.title}</span>

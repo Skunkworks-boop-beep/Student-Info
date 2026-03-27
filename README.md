@@ -12,7 +12,7 @@ Campus issue intelligence for students and administrators: thoughts feed, tactic
 | Document | Description |
 | --- | --- |
 | [**docs/README.md**](docs/README.md) | Index of all documentation |
-| [**docs/CREDITS.md**](docs/CREDITS.md) | Core team with full names, roles, and repository/organization attribution |
+| [**docs/CREDITS.md**](docs/CREDITS.md) | Core team (first names), roles, and repository/organization attribution |
 | [**docs/FEATURES.md**](docs/FEATURES.md) | Feature framework: capabilities, summaries, and contributor mapping |
 
 ---

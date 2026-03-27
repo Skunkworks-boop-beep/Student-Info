@@ -1,6 +1,6 @@
 # Feature framework
 
-This document mirrors the **Feature framework** on the Student.Info landing page: each capability includes a short summary, implementation detail, and **contributors** (first names match [CREDITS.md](./CREDITS.md)).
+This document mirrors the **Feature framework** on the Student.Info landing page: each capability includes a short summary, implementation detail, and **contributors** (first names, aligned with [CREDITS.md](./CREDITS.md)).
 
 ---
 

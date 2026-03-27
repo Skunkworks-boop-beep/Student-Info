@@ -14,16 +14,16 @@ Student.Info is a campus issue–intelligence and student-engagement web applica
 
 ## Core team
 
-Roles reflect how each person shaped the **internal project brief** and feature ownership (see [FEATURES.md](./FEATURES.md) for the capability-by-contributor matrix).
+Roles reflect how each person shaped the **internal project brief** and feature ownership (see [FEATURES.md](./FEATURES.md) for the capability-by-contributor matrix). **Contributors are listed by first name only** (as provided for the project).
 
 | Name | Role | Focus |
 | --- | --- | --- |
-| **Damilola Adeyemi** | Tech Lead | Overall architecture, backend components, integration patterns, and delivery alignment across features. Cross-cutting ownership where systems meet. |
-| **Aseel Khoury** | Platform, workflow & analytics | Auto-notification, complaint tracking and status model, workflow rules, admin/student security, heat map, comments schema, dashboard analytics. |
-| **Erik Muller** | AI, map & student experience | AI translator, front-desk quick window, status colors, evaluation, AI assistant, peer help with honesty checks, campus map and wayfinding, ratings. |
-| **Abilio Santos** | Engagement & feedback loops | Replies and translation UX, video and FAQ, AI chat mode, Kudos/tokens, resolved ringtone, UNI XP, donations, activity points, backend narrative for comments. |
-| **Nora Yilmaz** | Product breadth & operations | Overlapping scope on notifications, tracking, heat map, comments, analytics, workflow, security; donations, categories, appreciation, bus tracker with Zanela; shared reply/video/AI/gift flows. |
-| **Zanela Basha** | Categories, mobility & support | Shared flows for replies, video, AI chat, developer support; categories and appreciation; bus tracker; UNI XP with Abilio. |
+| **Damilola** | Tech Lead | Overall architecture, backend components, integration patterns, and delivery alignment across features. Cross-cutting ownership where systems meet. |
+| **Aseel** | Platform, workflow & analytics | Auto-notification, complaint tracking and status model, workflow rules, admin/student security, heat map, comments schema, dashboard analytics. |
+| **Erik** | AI, map & student experience | AI translator, front-desk quick window, status colors, evaluation, AI assistant, peer help with honesty checks, campus map and wayfinding, ratings. |
+| **Abilio** | Engagement & feedback loops | Replies and translation UX, video and FAQ, AI chat mode, Kudos/tokens, resolved ringtone, UNI XP, donations, activity points, backend narrative for comments. |
+| **Nora** | Product breadth & operations | Overlapping scope on notifications, tracking, heat map, comments, analytics, workflow, security; donations, categories, appreciation, bus tracker with Zanela; shared reply/video/AI/gift flows. |
+| **Zanela** | Categories, mobility & support | Shared flows for replies, video, AI chat, developer support; categories and appreciation; bus tracker; UNI XP with Abilio. |
 
 ---
 
@@ -31,17 +31,6 @@ Roles reflect how each person shaped the **internal project brief** and feature 
 
 - **CREDITS.md** (this file) is the **people-first** view: who leads and what each person’s lane is.
 - **FEATURES.md** is the **capability-first** view: each feature card lists **contributors** by first name, matching the collaboration tags in the app’s landing “Feature framework” section.
-
-First names in the feature matrix map to the full names above:
-
-| First name | Full name |
-| --- | --- |
-| Damilola | Damilola Adeyemi |
-| Aseel | Aseel Khoury |
-| Erik | Erik Muller |
-| Abilio | Abilio Santos |
-| Nora | Nora Yilmaz |
-| Zanela | Zanela Basha |
 
 ---
 

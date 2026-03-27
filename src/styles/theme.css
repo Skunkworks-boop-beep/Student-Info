@@ -143,6 +143,42 @@
     font-family: 'Montserrat', sans-serif;
   }
 
+  /** Hide scrollbars on narrow viewports (mobile) — keep scrolling, lose the gutter. */
+  @media (max-width: 767px) {
+    html {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    html::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
+    }
+
+    body {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    body::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
+    }
+
+    #root {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    #root::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
+    }
+  }
+
   /**
   * Default typography styles for HTML elements (h1-h4, p, label, button, input).
   * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
