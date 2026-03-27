@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Heart, Send, Sparkles, Users } from 'lucide-react';
+import React, { useState } from 'react';
+import { Heart, Send, Sparkles } from 'lucide-react';
 import { motion } from 'motion/react';
 
 const DEVS = [

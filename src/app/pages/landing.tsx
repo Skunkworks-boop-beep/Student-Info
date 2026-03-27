@@ -543,7 +543,7 @@ export function LandingPage() {
         <p className="text-[11px] max-w-md mx-auto leading-relaxed">
           Campus-ready template — connect your identity provider, map data, and notification channels for your institution.{' '}
           <a
-            href="https://github.com/baumisstudentclub/Student.Info"
+            href="https://github.com/Skunkworks-boop-beep/Student-Info"
             className="text-primary hover:underline"
             style={{ fontWeight: 600 }}
             target="_blank"

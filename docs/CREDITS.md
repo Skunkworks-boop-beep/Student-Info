@@ -5,8 +5,8 @@
 | | |
 | --- | --- |
 | **Project** | Student.Info |
-| **GitHub** | [github.com/baumisstudentclub/Student.Info](https://github.com/baumisstudentclub/Student.Info) |
-| **Organization** | [baumisstudentclub](https://github.com/baumisstudentclub) — MIS Student Club initiative |
+| **GitHub** | [github.com/Skunkworks-boop-beep/Student-Info](https://github.com/Skunkworks-boop-beep/Student-Info) |
+| **Organization** | [MIS Student Club](https://github.com/baumisstudentclub) (`baumisstudentclub`) — project origin |
 
 Student.Info is a campus issue–intelligence and student-engagement web application. The product narrative, feature framework, and implementation are owned collaboratively by the core team below.
 

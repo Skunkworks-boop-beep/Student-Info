@@ -2,8 +2,8 @@
 
 Campus issue intelligence for students and administrators: thoughts feed, tactical heat map, AI-assisted workflows, notifications, gamification (UNI XP), and admin analytics.
 
-**Repository:** [github.com/baumisstudentclub/Student.Info](https://github.com/baumisstudentclub/Student.Info)  
-**Maintainer:** [MIS Student Club](https://github.com/baumisstudentclub) (`baumisstudentclub`)
+**Repository:** [github.com/Skunkworks-boop-beep/Student-Info](https://github.com/Skunkworks-boop-beep/Student-Info)  
+**Related org:** [MIS Student Club](https://github.com/baumisstudentclub) (`baumisstudentclub`)
 
 ---
 
