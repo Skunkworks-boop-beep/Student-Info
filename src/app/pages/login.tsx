@@ -76,7 +76,9 @@ export function LoginPage() {
             <span className="text-primary-foreground text-3xl" style={{ fontWeight: 700 }}>S</span>
           </div>
           <h1 className="text-3xl" style={{ fontWeight: 700 }}>Student.Info</h1>
-          <p className="text-muted-foreground mt-1 text-sm">Your modern campus issue intelligence portal</p>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Sign in to browse thoughts, the campus map, leaderboards, and (with an admin account) analytics and triage.
+          </p>
         </div>
 
         {/* Card */}
@@ -162,7 +164,7 @@ export function LoginPage() {
           </div>
 
           <div className="mt-5 pt-5 border-t border-border">
-            <p className="text-xs text-center text-muted-foreground mb-3">Quick Demo Access</p>
+            <p className="text-xs text-center text-muted-foreground mb-3">Instant sample accounts</p>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
@@ -173,7 +175,7 @@ export function LoginPage() {
                 }}
                 className="py-2 px-3 rounded-xl border border-border hover:bg-accent text-sm transition-colors"
               >
-                Student Demo
+                Student account
               </button>
               <button
                 type="button"
@@ -184,14 +186,15 @@ export function LoginPage() {
                 }}
                 className="py-2 px-3 rounded-xl border border-border hover:bg-accent text-sm transition-colors"
               >
-                Admin Demo
+                Admin account
               </button>
             </div>
           </div>
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-6 max-w-sm mx-auto leading-relaxed">
-          Demo sign-in — use your school email in production. Any password works for the preview.
+          Password is not checked in this build. Use Student account or Admin account for the right sidebar and routes,
+          or type any email—if it contains “admin”, you get the admin profile; otherwise the student profile.
         </p>
       </motion.div>
     </div>

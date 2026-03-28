@@ -23,22 +23,22 @@ const FEATURES = [
   {
     icon: MessageSquare,
     title: 'Thoughts feed',
-    desc: 'Share ideas, media, and campus signals in a social, constructive feed.',
+    desc: 'Filterable catalog of sample threads with optional photos, upvotes, and detail pages.',
   },
   {
     icon: Map,
     title: 'Campus intelligence',
-    desc: 'Tactical grid heat map with hover previews and zone-level detail.',
+    desc: 'Tactical heat grid and pins driven by bundled facility scenarios; role-based zone inspection.',
   },
   {
     icon: Sparkles,
-    title: 'AI assistant',
-    desc: 'Guided prompts, sessions, and optional input from other students.',
+    title: 'AI surfaces',
+    desc: 'Full assistant workspace (static layout) plus a floating widget with keyword-based help—not a hosted LLM in this build.',
   },
   {
     icon: Trophy,
     title: 'UNI XP & leaderboard',
-    desc: 'Recognition for participation — light gamification, serious outcomes.',
+    desc: 'Sample rankings and XP callouts; submit and dev-support flows show local XP feedback.',
   },
 ] as const;
 
@@ -418,8 +418,9 @@ export function LandingPage() {
               Feature framework & ownership
             </h2>
             <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
-              Each capability below maps to the internal brief. Where several people shaped the same idea, they are listed
-              together — hover a card (desktop) to see how it works and who collaborated.
+              Each item summarizes the <span className="text-foreground/90">intended</span> capability from the team
+              brief (events, schema, routing). The live preview implements matching UI with static data and client-side
+              state—hover a card on desktop for detail and collaborators.
             </p>
           </div>
 

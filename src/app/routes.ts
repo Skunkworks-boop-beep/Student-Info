@@ -1,5 +1,6 @@
 import { createBrowserRouter } from 'react-router';
 import { Layout } from './components/layout';
+import { RequireAdmin } from './components/require-admin';
 import { LandingPage } from './pages/landing';
 import { LoginPage } from './pages/login';
 import { DashboardPage } from './pages/dashboard';
@@ -31,11 +32,16 @@ export const router = createBrowserRouter([
       { path: 'map', Component: CampusMapPage },
       { path: 'support', Component: DevSupportPage },
       { path: 'assistant', Component: AIAssistantPage },
-      { path: 'admin', Component: AdminDashboardPage },
-      { path: 'admin/complaints', Component: AdminComplaintsPage },
-      { path: 'admin/users', Component: AdminUsersPage },
-      { path: 'admin/heatmap', Component: AdminHeatmapPage },
-      { path: 'admin/rules', Component: AdminRulesPage },
+      {
+        Component: RequireAdmin,
+        children: [
+          { path: 'admin', Component: AdminDashboardPage },
+          { path: 'admin/complaints', Component: AdminComplaintsPage },
+          { path: 'admin/users', Component: AdminUsersPage },
+          { path: 'admin/heatmap', Component: AdminHeatmapPage },
+          { path: 'admin/rules', Component: AdminRulesPage },
+        ],
+      },
     ],
   },
 ]);

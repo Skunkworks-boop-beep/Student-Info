@@ -3,17 +3,17 @@ import { Search, Sparkles, Plus, Bot, User, Send, Filter, BookOpen, Users, Clock
 import { useSound } from '../audio/sound-context';
 
 const CHAT_THREADS = [
-  { id: 't1', title: 'Appeal grade complaint drafting', updatedAt: '2m ago', unread: true },
-  { id: 't2', title: 'How to escalate safety issue', updatedAt: '18m ago', unread: false },
-  { id: 't3', title: 'Campus transport complaint format', updatedAt: '1h ago', unread: false },
+  { id: 't1', title: 'Appeal grade thought drafting', updatedAt: '2m ago', unread: true },
+  { id: 't2', title: 'How to escalate a safety issue', updatedAt: '18m ago', unread: false },
+  { id: 't3', title: 'Campus transport thought format', updatedAt: '1h ago', unread: false },
   { id: 't4', title: 'Scholarship office delay case', updatedAt: '3h ago', unread: false },
 ];
 
 const STARTER_PROMPTS = [
-  'Draft a complaint about broken lab equipment.',
-  'Summarize my unresolved complaints and suggest next steps.',
+  'Draft a thought about broken lab equipment.',
+  'Summarize my unresolved thoughts and suggest next steps.',
   'Create a respectful response to an admin update.',
-  'Generate a weekly report from my complaint statuses.',
+  'Generate a weekly report from my thought statuses.',
 ];
 
 const COMMUNITY_RESPONSES = [
@@ -29,7 +29,7 @@ const COMMUNITY_RESPONSES = [
     id: 'c2',
     student: 'Erik',
     role: 'Engineering Student',
-    text: 'For IT complaints, mention exact lab room + affected devices. Admin asked us to always add this.',
+    text: 'For IT thoughts, mention exact lab room + affected devices. Admin asked us to always add this.',
     upvotes: 16,
     time: '26m ago',
   },
@@ -37,7 +37,7 @@ const COMMUNITY_RESPONSES = [
     id: 'c3',
     student: 'Lina',
     role: 'Student',
-    text: 'If your complaint is urgent safety-related, mark High priority and link previous complaint IDs.',
+    text: 'If your thought is urgent safety-related, mark High priority and link previous thought IDs.',
     upvotes: 12,
     time: '40m ago',
   },
@@ -52,7 +52,10 @@ export function AIAssistantPage() {
       <div className="premium-header gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl" style={{ fontWeight: 700 }}>AI Assistant Workspace</h1>
-          <p className="text-sm text-muted-foreground mt-1">Plan, draft, and refine complaints with AI plus student-supported responses.</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Three-column workspace mock: static thread list, sample conversation, and community tips. Buttons and composer
+            play sounds; they do not call a model or save data.
+          </p>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
@@ -126,12 +129,12 @@ export function AIAssistantPage() {
                 <Bot className="w-4 h-4" />
               </div>
               <div className="max-w-[90%] sm:max-w-[85%] rounded-2xl rounded-tl-sm bg-secondary px-3 py-2 text-sm">
-                I can help draft complaints, summarize status updates, and suggest next steps. What should we work on?
+                I can help draft thoughts, summarize status updates, and suggest next steps. What should we work on?
               </div>
             </div>
             <div className="flex gap-2 justify-end">
               <div className="max-w-[90%] sm:max-w-[85%] rounded-2xl rounded-tr-sm bg-primary text-primary-foreground px-3 py-2 text-sm">
-                Draft a structured complaint about recurring internet outages in Block B.
+                Draft a structured thought about recurring internet outages in Block B.
               </div>
               <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center">
                 <User className="w-4 h-4" />
@@ -142,7 +145,8 @@ export function AIAssistantPage() {
                 <Bot className="w-4 h-4" />
               </div>
               <div className="max-w-[90%] sm:max-w-[85%] rounded-2xl rounded-tl-sm bg-secondary px-3 py-2 text-sm">
-                Draft prepared. I included issue timeline, impact on classes, and request for ETA. You can refine tone before posting.
+                Draft prepared (sample copy). Included timeline, class impact, and ETA ask—refine before you would post
+                to a real feed.
               </div>
             </div>
           </div>
@@ -188,7 +192,7 @@ export function AIAssistantPage() {
             </div>
             <div className="space-y-2">
               <button type="button" onClick={() => play('tap')} className="w-full text-left text-sm px-3 py-2 rounded-xl bg-secondary hover:bg-accent">
-                Draft Complaint
+                Draft thought
               </button>
               <button type="button" onClick={() => play('tap')} className="w-full text-left text-sm px-3 py-2 rounded-xl bg-secondary hover:bg-accent">
                 Summarize Updates

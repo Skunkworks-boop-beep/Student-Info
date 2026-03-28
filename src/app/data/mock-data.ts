@@ -104,14 +104,14 @@ export const adminUser: User = {
 };
 
 export const leaderboard: User[] = [
-  { id: 'u10', name: 'Erik', email: '', role: 'student', uni_xp: 720, badges: ['Top Contributor'], created_at: '', streak: 14 },
-  { id: 'u11', name: 'Aseel', email: '', role: 'student', uni_xp: 655, badges: ['Helpful Peer'], created_at: '', streak: 10 },
-  { id: 'u12', name: 'Zanela', email: '', role: 'student', uni_xp: 510, badges: ['Active Reporter'], created_at: '', streak: 5 },
-  { id: 'u1', name: 'Nora', email: '', role: 'student', uni_xp: 385, badges: ['Early Adopter'], created_at: '', streak: 7 },
-  { id: 'u13', name: 'Abilio', email: '', role: 'student', uni_xp: 340, badges: [], created_at: '', streak: 3 },
-  { id: 'u14', name: 'Lina', email: '', role: 'student', uni_xp: 290, badges: [], created_at: '', streak: 2 },
-  { id: 'u15', name: 'Mehmet', email: '', role: 'student', uni_xp: 245, badges: [], created_at: '', streak: 0 },
-  { id: 'u16', name: 'Sara', email: '', role: 'student', uni_xp: 210, badges: [], created_at: '', streak: 1 },
+  { id: 'u10', name: 'Erik', email: 'erik@university.edu', role: 'student', uni_xp: 720, badges: ['Top Contributor'], created_at: '2024-08-12', streak: 14 },
+  { id: 'u11', name: 'Aseel', email: 'aseel@university.edu', role: 'student', uni_xp: 655, badges: ['Helpful Peer'], created_at: '2024-09-03', streak: 10 },
+  { id: 'u12', name: 'Zanela', email: 'zanela@university.edu', role: 'student', uni_xp: 510, badges: ['Active Reporter'], created_at: '2025-01-20', streak: 5 },
+  { id: 'u1', name: 'Nora', email: 'nora@university.edu', role: 'student', uni_xp: 385, badges: ['Early Adopter'], created_at: '2025-09-01', streak: 7 },
+  { id: 'u13', name: 'Abilio', email: 'abilio@university.edu', role: 'student', uni_xp: 340, badges: [], created_at: '2025-02-14', streak: 3 },
+  { id: 'u14', name: 'Lina', email: 'lina@university.edu', role: 'student', uni_xp: 290, badges: [], created_at: '2025-11-01', streak: 2 },
+  { id: 'u15', name: 'Mehmet', email: 'mehmet@university.edu', role: 'student', uni_xp: 245, badges: [], created_at: '2026-01-08', streak: 0 },
+  { id: 'u16', name: 'Sara', email: 'sara@university.edu', role: 'student', uni_xp: 210, badges: [], created_at: '2026-02-22', streak: 1 },
 ];
 
 export const complaints: Complaint[] = [

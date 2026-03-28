@@ -140,7 +140,10 @@ export function SubmitComplaintPage() {
           <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
         </div>
         <h1 className="text-xl mb-2" style={{ fontWeight: 700 }}>Thought Shared!</h1>
-        <p className="text-muted-foreground mb-2 text-sm">Your thought has been shared with the community and is now under review.</p>
+        <p className="text-muted-foreground mb-2 text-sm">
+          Validation passed and XP is shown for feedback. This build does not persist new thoughts to the feed—use it
+          to demo the form, attachments, and success state.
+        </p>
         <p className="text-sm text-primary mb-6" style={{ fontWeight: 600 }}>+10 XP earned!</p>
         <div className="flex gap-3 justify-center">
           <button onClick={() => navigate(paths.complaints)} className="px-5 py-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors text-sm">

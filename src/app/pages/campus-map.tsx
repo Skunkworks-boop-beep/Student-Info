@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { MapPin, Building2, BookOpen, Coffee, Bus, Shield, Crosshair, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSound } from '../audio/sound-context';
+import { useAuth } from '../components/auth-context';
 
 export type IssueSeverity = 'low' | 'medium' | 'high';
 
@@ -369,6 +370,7 @@ interface CampusMapPageProps {
 
 export function CampusMapPage({ showHeader = true }: CampusMapPageProps) {
   const { play } = useSound();
+  const { isAdmin } = useAuth();
   const cellIssues = useMemo(() => buildCellIssueMap(), []);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   /** Viewport coords (clientX/clientY) — tooltip rendered in a portal so fixed positioning is correct. */
@@ -392,7 +394,9 @@ export function CampusMapPage({ showHeader = true }: CampusMapPageProps) {
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="premium-hero">
           <h1 className="text-3xl" style={{ fontWeight: 700 }}>Campus Intelligence Map</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Tactical grid overlay: hover a zone for live issue signals, click for full SITREP.
+            {isAdmin
+              ? 'Tactical grid: hover any zone for bundled facility signals; click to open SITREP, including clear zones for ops confirmation.'
+              : 'Hover any cell for a readout. Tap a cell that shows a signal count to open details—quiet cells are view-only. Pins and issues are sample data.'}
           </p>
         </motion.div>
       )}
@@ -487,22 +491,29 @@ export function CampusMapPage({ showHeader = true }: CampusMapPageProps) {
                 const tier = heatTier(heatScore(issues));
                 const style = TACTICAL_TIERS[tier];
                 const isSelected = selectedKey === key;
+                const canInspectZone = isAdmin || issues.length > 0;
 
                 return (
                   <button
                     key={key}
                     type="button"
-                    aria-label={`Zone ${col + 1}-${row + 1}, ${style.label}`}
+                    aria-label={
+                      canInspectZone
+                        ? `Zone ${col + 1}-${row + 1}, ${style.label}`
+                        : `Zone ${col + 1}-${row + 1}, ${style.label}, no open signals, selection reserved for admin`
+                    }
                     className={`
                       relative border border-black/[0.06] dark:border-white/[0.06]
                       transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:z-10
                       ${style.className}
-                      ${isSelected ? 'ring-2 ring-inset ring-primary z-[5] scale-[1.02]' : 'hover:brightness-95 dark:hover:brightness-110'}
+                      ${isSelected ? 'ring-2 ring-inset ring-primary z-[5] scale-[1.02]' : ''}
+                      ${canInspectZone ? 'hover:brightness-95 dark:hover:brightness-110' : 'cursor-not-allowed'}
                     `}
                     onMouseEnter={e => updateHoverPointer(e, key, issues)}
                     onMouseMove={e => updateHoverPointer(e, key, issues)}
                     onMouseLeave={() => setHover(null)}
                     onClick={() => {
+                      if (!canInspectZone) return;
                       play('tap');
                       setSelectedKey(isSelected ? null : key);
                     }}
@@ -578,7 +589,11 @@ export function CampusMapPage({ showHeader = true }: CampusMapPageProps) {
                           <span className="text-[10px] uppercase tracking-widest block mb-1 text-foreground">
                             Zone {hover.key.replace('-', ' · ')}
                           </span>
-                          No open signals — grid clear. Click to confirm.
+                          {isAdmin ? (
+                            <>No open signals — grid clear. Click to confirm.</>
+                          ) : (
+                            <>No open signals in this zone. Full zone inspection is available to campus operations only.</>
+                          )}
                         </p>
                       )}
                     </div>
@@ -680,7 +695,11 @@ export function CampusMapPage({ showHeader = true }: CampusMapPageProps) {
           ) : (
             <div className="premium-panel premium-hover-lift p-5 text-center">
               <Crosshair className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">Click a colored grid cell to open the full issue detail.</p>
+              <p className="text-sm text-muted-foreground">
+                {isAdmin
+                  ? 'Click a grid cell to open zone SITREP — including clear zones for ops confirmation.'
+                  : 'Tap a cell that shows a signal count to open issue details. Quiet zones stay overview-only.'}
+              </p>
             </div>
           )}
 

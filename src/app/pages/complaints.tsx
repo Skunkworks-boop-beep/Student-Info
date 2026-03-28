@@ -15,13 +15,16 @@ import {
   Maximize2,
   Radio,
   Users,
+  MapPin,
+  Send,
 } from 'lucide-react';
 import { complaints, CATEGORIES, leaderboard, type Status, type Category, type Complaint } from '../data/mock-data';
 import { StatusBadge, PriorityBadge } from '../components/status-badge';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { motion, AnimatePresence } from 'motion/react';
 import { firstNameOnly } from '../utils/display-name';
+import { StatusStepper } from '../components/status-stepper';
 
 /** Only some thoughts include media — keeps the feed varied. */
 const THOUGHT_MEDIA: Partial<Record<string, string[]>> = {
@@ -163,6 +166,8 @@ function ThoughtCard({
   c: Complaint;
   onImageClick: (src: string, alt: string) => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const [newComment, setNewComment] = useState('');
   const media = THOUGHT_MEDIA[c.id];
 
   return (
@@ -212,12 +217,30 @@ function ThoughtCard({
                 </button>
               </div>
 
-              <Link to={paths.complaint(c.id)} className="block group/link">
-                <h3 className="text-sm sm:text-base leading-snug group-hover/link:text-primary transition-colors" style={{ fontWeight: 600 }}>
-                  {c.title}
-                </h3>
-                <p className="text-sm text-muted-foreground line-clamp-3 mt-1.5 leading-relaxed">{c.description}</p>
-              </Link>
+              <button
+                type="button"
+                onClick={() => setExpanded(e => !e)}
+                className="w-full text-left rounded-lg -mx-1 px-1 py-0.5 hover:bg-primary/[0.06] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                aria-expanded={expanded}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="text-sm sm:text-base leading-snug text-foreground" style={{ fontWeight: 600 }}>
+                    {c.title}
+                  </h3>
+                  <ChevronDown
+                    className={`w-4 h-4 shrink-0 text-primary transition-transform mt-0.5 ${expanded ? 'rotate-180' : ''}`}
+                    aria-hidden
+                  />
+                </div>
+                <p
+                  className={`text-sm text-muted-foreground mt-1.5 leading-relaxed text-left ${expanded ? '' : 'line-clamp-3'}`}
+                >
+                  {c.description}
+                </p>
+                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1.5 inline-block">
+                  {expanded ? 'Tap to collapse' : 'Tap to expand thread'}
+                </span>
+              </button>
 
               <div className="flex flex-wrap items-center gap-2 mt-3 text-[11px] text-muted-foreground">
                 <span>{c.category}</span>
@@ -237,6 +260,120 @@ function ThoughtCard({
                 <StatusBadge status={c.status} />
                 <PriorityBadge priority={c.priority} />
               </div>
+
+              <AnimatePresence initial={false}>
+                {expanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-4 pt-4 border-t border-border/80 space-y-4 text-sm">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 shrink-0" />
+                          {c.location}
+                        </span>
+                        <span className="text-border">·</span>
+                        <span>Posted {format(new Date(c.created_at), 'MMM d, yyyy')}</span>
+                        <span className="text-border">·</span>
+                        <span>Updated {formatDistanceToNow(new Date(c.updated_at), { addSuffix: true })}</span>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">Status progress</p>
+                        <StatusStepper currentStatus={c.status} />
+                        {c.status_log.length > 0 && (
+                          <div className="mt-5 pt-4 border-t border-border space-y-3">
+                            <h3 className="text-xs text-muted-foreground uppercase tracking-wider">History</h3>
+                            {c.status_log.map((log, i) => (
+                              <div key={i} className="flex items-start gap-3 text-xs sm:text-sm">
+                                <div className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0" />
+                                <div>
+                                  <p>
+                                    <span style={{ fontWeight: 500 }}>{log.old_status}</span>
+                                    <span className="text-muted-foreground"> → </span>
+                                    <span style={{ fontWeight: 500 }}>{log.new_status}</span>
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {log.note} · {format(new Date(log.timestamp), 'MMM d, h:mm a')}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="rounded-xl border border-border/80 overflow-hidden bg-card/30">
+                        <div className="flex items-center gap-2 px-4 py-3 border-b border-border/80 bg-muted/20">
+                          <MessageSquare className="w-4 h-4" />
+                          <h2 className="text-sm" style={{ fontWeight: 600 }}>
+                            Comments ({c.comments.length})
+                          </h2>
+                        </div>
+                        <div className="divide-y divide-border/60">
+                          {c.comments.map(cm => (
+                            <div
+                              key={cm.id}
+                              className={`px-4 py-3 ${cm.parent_id ? 'ml-6 border-l-2 border-primary/20' : ''}`}
+                            >
+                              <div className="flex items-center gap-2 mb-1.5">
+                                <div
+                                  className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs"
+                                  style={{ fontWeight: 600 }}
+                                >
+                                  {firstNameOnly(cm.user_name).charAt(0)}
+                                </div>
+                                <span className="text-sm" style={{ fontWeight: 500 }}>
+                                  {firstNameOnly(cm.user_name)}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {formatDistanceToNow(new Date(cm.created_at), { addSuffix: true })}
+                                </span>
+                              </div>
+                              <p className="text-sm text-foreground/90 leading-relaxed">{cm.text}</p>
+                            </div>
+                          ))}
+                          {c.comments.length === 0 && (
+                            <div className="px-4 py-6 text-center text-sm text-muted-foreground">
+                              No comments yet. Be the first!
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-3 border-t border-border/80 flex gap-2">
+                          <input
+                            value={newComment}
+                            onChange={e => setNewComment(e.target.value)}
+                            placeholder="Write a comment..."
+                            className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-input-background border border-border focus:ring-2 focus:ring-primary/40 outline-none text-sm"
+                          />
+                          <button
+                            type="button"
+                            disabled={!newComment.trim()}
+                            className="p-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors shrink-0"
+                            aria-label="Send comment"
+                          >
+                            <Send className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-muted-foreground">
+                        Prefer a dedicated URL?{' '}
+                        <Link
+                          to={paths.complaint(c.id)}
+                          className="text-primary hover:underline font-medium"
+                        >
+                          Open full page
+                        </Link>
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
 
@@ -312,7 +449,8 @@ export function ComplaintsPage() {
           Thoughts Feed
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          A readable column of community thoughts. Some posts include a photo — tap to enlarge, or open the title for the full thread.
+          Read-only feed from the bundled thought catalog. Filter by status and category, sort by date, votes, or reply
+          count. Tap a thought to expand the thread in place; a few cards include photos you can tap to enlarge.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary text-xs">

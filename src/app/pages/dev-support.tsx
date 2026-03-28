@@ -28,7 +28,9 @@ export function DevSupportPage() {
     <div className="premium-page max-w-5xl">
       <div>
         <h1 className="text-3xl" style={{ fontWeight: 700 }}>Developer Support</h1>
-        <p className="text-sm text-muted-foreground mt-1">Show your appreciation with Support Tokens (+8 XP)</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Send a Support Token to a teammate—UI-only in this build; shows a thank-you state and +8 XP locally.
+        </p>
       </div>
 
       {sent && (

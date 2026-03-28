@@ -13,7 +13,9 @@ export function LeaderboardPage() {
     <div className="premium-page max-w-5xl">
       <div>
         <h1 className="text-3xl" style={{ fontWeight: 700 }}>UNI XP Leaderboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">Compete with fellow students!</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Rankings and XP actions shown here come from the bundled leaderboard sample—not live competition data.
+        </p>
       </div>
 
       {/* Your rank */}

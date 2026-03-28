@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, Outlet, NavLink, Navigate, useNavigate } from 'react-router';
+import { Link, Outlet, NavLink, Navigate, useNavigate, useLocation } from 'react-router';
 import {
   LayoutDashboard, FileText, PlusCircle, Trophy, Map, Heart,
   LogOut, Menu, X, Sun, Moon, Shield, Sparkles,
@@ -19,7 +19,9 @@ export function Layout() {
   const { theme, toggleTheme } = useTheme();
   const { play } = useSound();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const inAdminSection = pathname === paths.admin || pathname.startsWith(`${paths.admin}/`);
 
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -36,8 +38,9 @@ export function Layout() {
   ];
 
   const adminLinks = [
+    { to: paths.app, icon: LayoutDashboard, label: 'Dashboard' },
     { to: paths.admin, icon: BarChart3, label: 'Analytics' },
-    { to: paths.adminComplaints, icon: FileText, label: 'Complaints' },
+    { to: paths.adminComplaints, icon: FileText, label: 'Thoughts' },
     { to: paths.adminUsers, icon: Users, label: 'Users' },
     { to: paths.adminHeatmap, icon: Building2, label: 'Heat Map' },
     { to: paths.adminRules, icon: Workflow, label: 'Workflow Rules' },
@@ -50,8 +53,12 @@ export function Layout() {
       <div className="flex h-full overflow-hidden lg:rounded-[1.75rem] lg:border lg:border-border/70 lg:shadow-[0_16px_40px_rgba(15,23,42,0.10)]">
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-72 bg-sidebar text-sidebar-foreground transform transition-transform duration-200 ease-in-out lg:relative lg:translate-x-0 lg:border-r lg:border-sidebar-border ${
+        className={`fixed inset-y-0 left-0 z-40 w-72 text-sidebar-foreground transform transition-transform duration-200 ease-in-out lg:relative lg:translate-x-0 lg:border-r lg:border-sidebar-border ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        } ${
+          isAdmin
+            ? 'bg-sidebar border-l-4 border-l-[#5c6b4a] dark:border-l-[#6f7a5e] ring-1 ring-[#6f7a5e]/15 dark:ring-[#3d4a38]/40'
+            : 'bg-sidebar border-l-4 border-l-primary/40 dark:border-l-primary/30'
         }`}
       >
         <div className="flex flex-col h-full">
@@ -84,6 +91,24 @@ export function Layout() {
               <X className="w-5 h-5" />
             </button>
           </div>
+
+          {isAdmin ? (
+            <div className="mx-3 mb-1 rounded-xl border border-[#6f7a5e]/45 bg-[#1c2218]/40 dark:bg-[#0d120b]/90 px-3 py-2.5">
+              <p className="text-[10px] font-mono uppercase tracking-[0.16em] text-[#b8c4a8] dark:text-[#9faa8c]">
+                Staff · Operations console
+              </p>
+              <p className="text-[11px] text-sidebar-foreground/65 mt-1 leading-snug">
+                Admin routes and tools. Switch below for the student experience.
+              </p>
+            </div>
+          ) : (
+            <div className="mx-3 mb-1 rounded-xl border border-primary/25 bg-primary/[0.07] px-3 py-2.5">
+              <p className="text-[10px] font-mono uppercase tracking-[0.16em] text-primary">Student · Campus app</p>
+              <p className="text-[11px] text-sidebar-foreground/65 mt-1 leading-snug">
+                Thoughts, map, leaderboard, and your profile.
+              </p>
+            </div>
+          )}
 
           {/* Nav */}
           <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
@@ -149,13 +174,28 @@ export function Layout() {
             </button>
 
             {/* User card */}
-            <div className="flex items-center gap-3 p-3 mt-2 rounded-2xl bg-sidebar-accent">
-              <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm" style={{ fontWeight: 600 }}>
+            <div
+              className={`flex items-center gap-3 p-3 mt-2 rounded-2xl border ${
+                isAdmin
+                  ? 'bg-[#1c2218]/55 dark:bg-[#0f140d] border-[#6f7a5e]/35'
+                  : 'bg-sidebar-accent border-transparent'
+              }`}
+            >
+              <div
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-sm ${
+                  isAdmin
+                    ? 'bg-[#3d4a38] text-[#e8ebe3] ring-2 ring-[#6f7a5e]/40'
+                    : 'bg-primary text-primary-foreground'
+                }`}
+                style={{ fontWeight: 600 }}
+              >
                 {firstNameOnly(user.name).charAt(0)}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm truncate text-sidebar-foreground" style={{ fontWeight: 500 }}>{firstNameOnly(user.name)}</p>
-                <p className="text-[11px] text-sidebar-foreground/50 capitalize">{user.role}</p>
+                <p className="text-[11px] text-sidebar-foreground/50 uppercase tracking-wide">
+                  {isAdmin ? 'Administrator' : 'Student'}
+                </p>
               </div>
               {!isAdmin && (
                 <span className="text-xs text-primary" style={{ fontWeight: 600 }}>{user.uni_xp} XP</span>
@@ -179,7 +219,13 @@ export function Layout() {
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background">
         {/* Top bar */}
-        <header className="sticky top-0 z-20 flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3 bg-background/85 backdrop-blur-md border-b border-border/70 shrink-0">
+        <header
+          className={`sticky top-0 z-20 flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3 backdrop-blur-md shrink-0 ${
+            isAdmin
+              ? 'border-b-2 border-[#6f7a5e]/40 bg-[#9faa8c]/[0.14] dark:bg-[#141a12]/95 dark:border-[#4a5c46]/55'
+              : 'border-b border-border/70 bg-background/85'
+          }`}
+        >
           <div className="flex items-center gap-3 min-w-0">
             <button
               className="lg:hidden p-2 hover:bg-accent rounded-xl"
@@ -191,10 +237,16 @@ export function Layout() {
               <Menu className="w-5 h-5" />
             </button>
             <div className="hidden sm:block">
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{isAdmin ? 'Admin Portal' : 'Student Portal'}</p>
+              <p
+                className={`text-xs uppercase tracking-[0.18em] ${
+                  isAdmin ? 'text-[#3d4a38] dark:text-[#9faa8c]' : 'text-muted-foreground'
+                }`}
+              >
+                {isAdmin ? 'Staff · Admin portal' : 'Student · Campus portal'}
+              </p>
               <p className="text-sm truncate" style={{ fontWeight: 600 }}>Welcome, {firstNameOnly(user.name)}</p>
             </div>
-            <p className="sm:hidden text-sm truncate" style={{ fontWeight: 600 }}>{isAdmin ? 'Admin' : 'Home'}</p>
+            <p className="sm:hidden text-sm truncate" style={{ fontWeight: 600 }}>{isAdmin ? 'Staff' : 'Home'}</p>
           </div>
           <div className="flex items-center gap-2">
             <NotificationBell />
@@ -203,7 +255,18 @@ export function Layout() {
 
         {/* Content */}
         <main className="flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-6 lg:px-8 xl:px-10">
-          <div className="mx-auto w-full max-w-7xl">
+          <div
+            className={`mx-auto w-full max-w-7xl ${
+              inAdminSection && isAdmin
+                ? 'rounded-xl border border-[#6f7a5e]/30 dark:border-[#4a5c46]/50 bg-[#9faa8c]/[0.03] dark:bg-[#0f120d]/40 p-3 sm:p-5 min-h-[min(100%,480px)]'
+                : ''
+            }`}
+          >
+            {inAdminSection && isAdmin && (
+              <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-[#5c6b4a] dark:text-[#9faa8c] mb-3 sm:mb-4">
+                Admin workspace · student routes unchanged
+              </p>
+            )}
             <Outlet />
           </div>
         </main>

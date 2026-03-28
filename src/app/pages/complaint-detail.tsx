@@ -28,6 +28,9 @@ export function ComplaintDetailPage() {
       <Link to={paths.complaints} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
         <ArrowLeft className="w-4 h-4" /> Back to thoughts
       </Link>
+      <p className="text-xs text-muted-foreground mt-2 mb-4">
+        Thread content, status, and comments load from the static catalog—admin queue edits are not merged here yet.
+      </p>
 
       {/* Header card */}
       <div className="premium-panel p-6">
