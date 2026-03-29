@@ -274,7 +274,7 @@ export function LandingPage() {
             >
               {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </button>
-            {user ? (
+            {user && (
               <Link
                 to={paths.app}
                 onClick={() => play('nav')}
@@ -284,26 +284,6 @@ export function LandingPage() {
                 <LayoutDashboard className="h-4 w-4" />
                 Open app
               </Link>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Link
-                  to={paths.login}
-                  onClick={() => play('nav')}
-                  className="inline-flex items-center rounded-full border border-border bg-card px-3 py-2 text-sm transition hover:bg-accent sm:px-4 sm:py-2.5"
-                  style={{ fontWeight: 600 }}
-                >
-                  Sign in
-                </Link>
-                <Link
-                  to={`${paths.login}?mode=signup`}
-                  onClick={() => play('nav')}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-2 text-sm text-primary-foreground transition hover:opacity-90 sm:px-4 sm:py-2.5"
-                  style={{ fontWeight: 600 }}
-                >
-                  Sign up
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
             )}
           </div>
         </div>
