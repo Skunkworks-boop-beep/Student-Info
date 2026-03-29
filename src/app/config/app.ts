@@ -4,7 +4,14 @@
 export const APP_NAME = 'Student.Info';
 export const APP_TAGLINE = 'Thoughts, map & admin tools';
 
-/** Demo emails used by the quick sign-in buttons; the form maps any address containing “admin” to the admin profile. */
-export const DEMO_EMAIL_STUDENT = 'student@university.edu';
-export const DEMO_EMAIL_ADMIN = 'admin@university.edu';
-export const EMAIL_PLACEHOLDER = 'you@university.edu';
+/** Shown when no session or account has no university (e.g. legacy data). */
+export const DEFAULT_CAMPUS_LABEL = APP_TAGLINE;
+
+/** Seeded demo accounts (`student` / `admin`) use this password; minimum length for all sign-ups. */
+export const DEMO_PASSWORD = 'demo123';
+
+/** Quick sign-in usernames (see `auth-accounts` seed). */
+export const DEMO_USERNAME_STUDENT = 'student';
+export const DEMO_USERNAME_ADMIN = 'admin';
+
+export const USERNAME_PLACEHOLDER = 'your.username';

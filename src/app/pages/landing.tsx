@@ -285,15 +285,25 @@ export function LandingPage() {
                 Open app
               </Link>
             ) : (
-              <Link
-                to={paths.login}
-                onClick={() => play('nav')}
-                className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm text-primary-foreground transition hover:opacity-90"
-                style={{ fontWeight: 600 }}
-              >
-                Sign in
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link
+                  to={paths.login}
+                  onClick={() => play('nav')}
+                  className="inline-flex items-center rounded-full border border-border bg-card px-3 py-2 text-sm transition hover:bg-accent sm:px-4 sm:py-2.5"
+                  style={{ fontWeight: 600 }}
+                >
+                  Sign in
+                </Link>
+                <Link
+                  to={`${paths.login}?mode=signup`}
+                  onClick={() => play('nav')}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-2 text-sm text-primary-foreground transition hover:opacity-90 sm:px-4 sm:py-2.5"
+                  style={{ fontWeight: 600 }}
+                >
+                  Sign up
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
             )}
           </div>
         </div>
@@ -332,21 +342,21 @@ export function LandingPage() {
             ) : (
               <>
                 <Link
-                  to={paths.login}
+                  to={`${paths.login}?mode=signup`}
                   onClick={() => play('nav')}
                   className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-8 py-3.5 text-primary-foreground shadow-[0_12px_40px_rgba(15,23,42,0.18)] transition hover:opacity-95 dark:shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
                   style={{ fontWeight: 700 }}
                 >
-                  Get started
+                  Sign up
                   <ArrowRight className="h-5 w-5" />
                 </Link>
                 <Link
                   to={paths.login}
-                  onClick={() => play('tap')}
+                  onClick={() => play('nav')}
                   className="inline-flex items-center justify-center rounded-2xl border border-border bg-card px-8 py-3.5 text-sm transition hover:bg-accent"
                   style={{ fontWeight: 600 }}
                 >
-                  I already have access
+                  Sign in
                 </Link>
               </>
             )}
@@ -389,15 +399,26 @@ export function LandingPage() {
             and a map that turns scattered reports into a clear picture of campus pressure.
           </p>
           {!user && (
-            <Link
-              to={paths.login}
-              onClick={() => play('nav')}
-              className="mt-5 inline-flex items-center gap-2 text-sm text-primary hover:underline"
-              style={{ fontWeight: 600 }}
-            >
-              Sign in with your school account
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-3 gap-y-2">
+              <Link
+                to={`${paths.login}?mode=signup`}
+                onClick={() => play('nav')}
+                className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground transition hover:opacity-90"
+                style={{ fontWeight: 600 }}
+              >
+                Sign up
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                to={paths.login}
+                onClick={() => play('nav')}
+                className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                style={{ fontWeight: 600 }}
+              >
+                Sign in
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
           )}
         </motion.div>
 

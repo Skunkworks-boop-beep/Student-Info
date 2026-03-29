@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { analyticsData } from '../data/mock-data';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { adminTactical } from '../admin-tactical-ui';
+import { useAuth } from '../components/auth-context';
 
 /** Tactical-muted chart fills — same semantics as before (amber / blue / violet / green families), olive-tan keyed */
 const PIE_COLORS = ['#b89a5c', '#6e7f78', '#7d6e7a', '#5f6f4e'];
@@ -21,6 +22,7 @@ const KPI_ICON_STYLES = [
 const TREND_TACTICAL = 'text-[#4a5540] dark:text-[#9faa8c]';
 
 export function AdminDashboardPage() {
+  const { campusName } = useAuth();
   const { totalComplaints, openComplaints, avgResolutionDays, satisfactionScore, complaintsOverTime, byCategory, byStatus } = analyticsData;
 
   const kpis = [
@@ -45,7 +47,7 @@ export function AdminDashboardPage() {
               className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md ${adminTactical.borderSoft} bg-background/60 ${adminTactical.label}`}
             >
               <Crosshair className="w-3 h-3 text-[#5c6b4a] dark:text-[#8faa7a]" />
-              Admin ops
+              <span className="truncate max-w-[12rem] sm:max-w-[18rem]">{campusName}</span>
             </span>
             <h1 className="text-2xl sm:text-3xl leading-none truncate" style={{ fontWeight: 800 }}>
               Analytics

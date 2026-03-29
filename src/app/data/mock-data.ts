@@ -8,6 +8,12 @@ export interface User {
   badges: string[];
   created_at: string;
   streak: number;
+  /** Set when signed in from stored accounts. */
+  username?: string;
+  /** From signup; shown in shell and dashboards. */
+  university_name?: string;
+  /** When true, UI shows `username` instead of first name (sidebar, dashboard, leaderboard). */
+  anonymous_mode?: boolean;
 }
 
 export interface Complaint {
@@ -90,6 +96,7 @@ export const currentUser: User = {
   badges: ['Early Adopter', 'Problem Solver', '7-Day Streak'],
   created_at: '2025-09-01',
   streak: 7,
+  university_name: 'Sample University',
 };
 
 export const adminUser: User = {
@@ -101,6 +108,7 @@ export const adminUser: User = {
   badges: [],
   created_at: '2025-01-15',
   streak: 0,
+  university_name: 'Sample University',
 };
 
 export const leaderboard: User[] = [

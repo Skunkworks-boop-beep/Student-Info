@@ -1,20 +1,28 @@
 import { useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { Eye, EyeOff, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../components/auth-context';
 import { useTheme } from '../components/theme-provider';
 import { motion } from 'motion/react';
 import { paths } from '../paths';
 import { useSound } from '../audio/sound-context';
-import { DEMO_EMAIL_ADMIN, DEMO_EMAIL_STUDENT, EMAIL_PLACEHOLDER } from '../config/app';
+import {
+  DEMO_PASSWORD,
+  DEMO_USERNAME_ADMIN,
+  DEMO_USERNAME_STUDENT,
+  USERNAME_PLACEHOLDER,
+} from '../config/app';
 
 export function LoginPage() {
-  const [email, setEmail] = useState('');
+  const [searchParams] = useSearchParams();
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [universityName, setUniversityName] = useState('');
   const [showPw, setShowPw] = useState(false);
-  const [isRegister, setIsRegister] = useState(false);
+  const [isRegister, setIsRegister] = useState(() => searchParams.get('mode') === 'signup');
   const [error, setError] = useState('');
-  const { login, user } = useAuth();
+  const { login, signup, user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { play } = useSound();
   const navigate = useNavigate();
@@ -25,17 +33,51 @@ export function LoginPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      setError('Please fill in all fields');
+    setError('');
+    if (!username.trim() || !password) {
+      setError('Please enter username and password.');
       play('error');
       return;
     }
     if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError('Password must be at least 6 characters.');
       play('error');
       return;
     }
-    login(email, password);
+
+    if (isRegister) {
+      if (!fullName.trim()) {
+        setError('Please enter your full name.');
+        play('error');
+        return;
+      }
+      if (!universityName.trim()) {
+        setError('Please enter your university name.');
+        play('error');
+        return;
+      }
+      const res = signup({
+        username: username.trim(),
+        password,
+        name: fullName.trim(),
+        university_name: universityName.trim(),
+      });
+      if (!res.ok) {
+        setError(res.error);
+        play('error');
+        return;
+      }
+      play('success');
+      navigate(paths.app);
+      return;
+    }
+
+    const res = login(username.trim(), password);
+    if (!res.ok) {
+      setError(res.error);
+      play('error');
+      return;
+    }
     play('success');
     navigate(paths.app);
   };
@@ -70,22 +112,21 @@ export function LoginPage() {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-lg relative z-10"
       >
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-[0_16px_30px_rgba(245,196,81,0.35)]">
             <span className="text-primary-foreground text-3xl" style={{ fontWeight: 700 }}>S</span>
           </div>
           <h1 className="text-3xl" style={{ fontWeight: 700 }}>Student.Info</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Sign in to browse thoughts, the campus map, leaderboards, and (with an admin account) analytics and triage.
+            Sign in with your username and password. On sign up, add your university — that name appears across your
+            campus dashboards and shell.
           </p>
         </div>
 
-        {/* Card */}
         <div className="premium-panel premium-hover-lift p-6 shadow-none">
-          <h2 className="text-lg mb-1" style={{ fontWeight: 600 }}>{isRegister ? 'Create Account' : 'Welcome Back'}</h2>
+          <h2 className="text-lg mb-1" style={{ fontWeight: 600 }}>{isRegister ? 'Create account' : 'Welcome back'}</h2>
           <p className="text-sm text-muted-foreground mb-6">
-            {isRegister ? 'Sign up to get started' : 'Sign in to your account'}
+            {isRegister ? 'Choose a username and add your school' : 'Sign in to your account'}
           </p>
 
           {error && (
@@ -96,43 +137,65 @@ export function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {isRegister && (
-              <div>
-                <label className="text-sm text-muted-foreground mb-1.5 block">Full Name</label>
-                <input
-                  type="text"
-                  placeholder="Your full name"
-                  className="w-full px-4 py-2.5 rounded-xl bg-input-background border border-border focus:ring-2 focus:ring-primary/40 outline-none transition"
-                />
-              </div>
+              <>
+                <div>
+                  <label htmlFor="full-name" className="text-sm text-muted-foreground mb-1.5 block">Full name</label>
+                  <input
+                    id="full-name"
+                    type="text"
+                    autoComplete="name"
+                    value={fullName}
+                    onChange={e => { setFullName(e.target.value); setError(''); }}
+                    placeholder="Your full name"
+                    className="w-full px-4 py-2.5 rounded-xl bg-input-background border border-border focus:ring-2 focus:ring-primary/40 outline-none transition"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="university" className="text-sm text-muted-foreground mb-1.5 block">University name</label>
+                  <input
+                    id="university"
+                    type="text"
+                    autoComplete="organization"
+                    value={universityName}
+                    onChange={e => { setUniversityName(e.target.value); setError(''); }}
+                    placeholder="e.g. State University"
+                    className="w-full px-4 py-2.5 rounded-xl bg-input-background border border-border focus:ring-2 focus:ring-primary/40 outline-none transition"
+                  />
+                </div>
+              </>
             )}
             <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">Email</label>
+              <label htmlFor="username" className="text-sm text-muted-foreground mb-1.5 block">Username</label>
               <input
-                type="email"
-                value={email}
-                onChange={e => { setEmail(e.target.value); setError(''); }}
-                placeholder={EMAIL_PLACEHOLDER}
+                id="username"
+                type="text"
+                autoComplete="username"
+                value={username}
+                onChange={e => { setUsername(e.target.value); setError(''); }}
+                placeholder={USERNAME_PLACEHOLDER}
                 className="w-full px-4 py-2.5 rounded-xl bg-input-background border border-border focus:ring-2 focus:ring-primary/40 outline-none transition"
               />
             </div>
             <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">Password</label>
+              <label htmlFor="password" className="text-sm text-muted-foreground mb-1.5 block">Password</label>
               <div className="relative">
                 <input
+                  id="password"
                   type={showPw ? 'text' : 'password'}
+                  autoComplete={isRegister ? 'new-password' : 'current-password'}
                   value={password}
                   onChange={e => { setPassword(e.target.value); setError(''); }}
                   placeholder="••••••••"
                   className="w-full px-4 py-2.5 rounded-xl bg-input-background border border-border focus:ring-2 focus:ring-primary/40 outline-none transition pr-10"
                 />
                 <button
-                type="button"
-                onClick={() => {
-                  play('tap');
-                  setShowPw(!showPw);
-                }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-              >
+                  type="button"
+                  onClick={() => {
+                    play('tap');
+                    setShowPw(!showPw);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                >
                   {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
@@ -142,7 +205,7 @@ export function LoginPage() {
               type="submit"
               className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors"
             >
-              {isRegister ? 'Create Account' : 'Sign In'}
+              {isRegister ? 'Create account' : 'Sign in'}
             </button>
           </form>
 
@@ -158,43 +221,48 @@ export function LoginPage() {
                 }}
                 className="text-primary hover:underline"
               >
-                {isRegister ? 'Sign In' : 'Sign Up'}
+                {isRegister ? 'Sign in' : 'Sign up'}
               </button>
             </p>
           </div>
 
           <div className="mt-5 pt-5 border-t border-border">
-            <p className="text-xs text-center text-muted-foreground mb-3">Instant sample accounts</p>
+            <p className="text-xs text-center text-muted-foreground mb-3">Sample accounts</p>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => {
-                  login(DEMO_EMAIL_STUDENT, 'demo');
+                  const res = login(DEMO_USERNAME_STUDENT, DEMO_PASSWORD);
+                  if (!res.ok) return;
                   play('success');
                   navigate(paths.app);
                 }}
                 className="py-2 px-3 rounded-xl border border-border hover:bg-accent text-sm transition-colors"
               >
-                Student account
+                Student ({DEMO_USERNAME_STUDENT})
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  login(DEMO_EMAIL_ADMIN, 'demo');
+                  const res = login(DEMO_USERNAME_ADMIN, DEMO_PASSWORD);
+                  if (!res.ok) return;
                   play('success');
                   navigate(paths.app);
                 }}
                 className="py-2 px-3 rounded-xl border border-border hover:bg-accent text-sm transition-colors"
               >
-                Admin account
+                Admin ({DEMO_USERNAME_ADMIN})
               </button>
             </div>
+            <p className="text-[11px] text-center text-muted-foreground mt-2">
+              Password for both: <span className="font-mono">{DEMO_PASSWORD}</span>
+            </p>
           </div>
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-6 max-w-sm mx-auto leading-relaxed">
-          Password is not checked in this build. Use Student account or Admin account for the right sidebar and routes,
-          or type any email—if it contains “admin”, you get the admin profile; otherwise the student profile.
+          Accounts are stored in this browser only (local demo). Sign up sets your university label for the in-app
+          experience; it is not sent to a server.
         </p>
       </motion.div>
     </div>

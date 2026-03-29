@@ -11,11 +11,10 @@ import { NotificationBell } from './notification-bell';
 import { AIChatWidget } from './ai-chat';
 import { paths } from '../paths';
 import { useSound, SoundToggleButton } from '../audio/sound-context';
-import { APP_TAGLINE } from '../config/app';
-import { firstNameOnly } from '../utils/display-name';
+import { userPublicLabel } from '../utils/display-name';
 
 export function Layout() {
-  const { user, isAdmin, logout, switchRole } = useAuth();
+  const { user, isAdmin, logout, switchRole, campusName, canSwitchRole, anonymousMode } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { play } = useSound();
   const navigate = useNavigate();
@@ -77,7 +76,9 @@ export function Layout() {
               </div>
               <div className="min-w-0 text-left">
                 <h1 className="text-sm text-sidebar-foreground" style={{ fontWeight: 800 }}>Student.Info</h1>
-                <p className="text-[10px] text-sidebar-foreground/60">{APP_TAGLINE}</p>
+                <p className="text-[10px] text-sidebar-foreground/60 line-clamp-2 leading-tight" title={campusName}>
+                  {campusName}
+                </p>
               </div>
             </Link>
             <button
@@ -98,14 +99,14 @@ export function Layout() {
                 Staff · Operations console
               </p>
               <p className="text-[11px] text-sidebar-foreground/65 mt-1 leading-snug">
-                Admin routes and tools. Switch below for the student experience.
+                {campusName}. Admin routes and tools{canSwitchRole ? '; switch below for the student experience.' : '.'}
               </p>
             </div>
           ) : (
             <div className="mx-3 mb-1 rounded-xl border border-primary/25 bg-primary/[0.07] px-3 py-2.5">
               <p className="text-[10px] font-mono uppercase tracking-[0.16em] text-primary">Student · Campus app</p>
               <p className="text-[11px] text-sidebar-foreground/65 mt-1 leading-snug">
-                Thoughts, map, leaderboard, and your profile.
+                {campusName} — thoughts, map, leaderboard, and your profile.
               </p>
             </div>
           )}
@@ -140,16 +141,18 @@ export function Layout() {
 
           {/* User & Actions */}
           <div className="p-3 space-y-1 border-t border-sidebar-border">
-            <button
-              onClick={() => {
-                play('role');
-                switchRole();
-              }}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground w-full transition-colors"
-            >
-              <Shield className="w-5 h-5" />
-              {isAdmin ? 'Student View' : 'Admin View'}
-            </button>
+            {canSwitchRole && (
+              <button
+                onClick={() => {
+                  play('role');
+                  switchRole();
+                }}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground w-full transition-colors"
+              >
+                <Shield className="w-5 h-5" />
+                {isAdmin ? 'Student View' : 'Admin View'}
+              </button>
+            )}
             <button
               onClick={() => {
                 play('theme');
@@ -189,10 +192,10 @@ export function Layout() {
                 }`}
                 style={{ fontWeight: 600 }}
               >
-                {firstNameOnly(user.name).charAt(0)}
+                {userPublicLabel(user, anonymousMode).charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm truncate text-sidebar-foreground" style={{ fontWeight: 500 }}>{firstNameOnly(user.name)}</p>
+                <p className="text-sm truncate text-sidebar-foreground" style={{ fontWeight: 500 }}>{userPublicLabel(user, anonymousMode)}</p>
                 <p className="text-[11px] text-sidebar-foreground/50 uppercase tracking-wide">
                   {isAdmin ? 'Administrator' : 'Student'}
                 </p>
@@ -242,9 +245,9 @@ export function Layout() {
                   isAdmin ? 'text-[#3d4a38] dark:text-[#9faa8c]' : 'text-muted-foreground'
                 }`}
               >
-                {isAdmin ? 'Staff · Admin portal' : 'Student · Campus portal'}
+                {isAdmin ? `Staff · ${campusName}` : `Student · ${campusName}`}
               </p>
-              <p className="text-sm truncate" style={{ fontWeight: 600 }}>Welcome, {firstNameOnly(user.name)}</p>
+              <p className="text-sm truncate" style={{ fontWeight: 600 }}>Welcome, {userPublicLabel(user, anonymousMode)}</p>
             </div>
             <p className="sm:hidden text-sm truncate" style={{ fontWeight: 600 }}>{isAdmin ? 'Staff' : 'Home'}</p>
           </div>

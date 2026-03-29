@@ -260,127 +260,129 @@ function ThoughtCard({
                 <StatusBadge status={c.status} />
                 <PriorityBadge priority={c.priority} />
               </div>
-
-              <AnimatePresence initial={false}>
-                {expanded && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
-                    className="overflow-hidden"
-                  >
-                    <div className="mt-4 pt-4 border-t border-border/80 space-y-4 text-sm">
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5 shrink-0" />
-                          {c.location}
-                        </span>
-                        <span className="text-border">·</span>
-                        <span>Posted {format(new Date(c.created_at), 'MMM d, yyyy')}</span>
-                        <span className="text-border">·</span>
-                        <span>Updated {formatDistanceToNow(new Date(c.updated_at), { addSuffix: true })}</span>
-                      </div>
-
-                      <div>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">Status progress</p>
-                        <StatusStepper currentStatus={c.status} />
-                        {c.status_log.length > 0 && (
-                          <div className="mt-5 pt-4 border-t border-border space-y-3">
-                            <h3 className="text-xs text-muted-foreground uppercase tracking-wider">History</h3>
-                            {c.status_log.map((log, i) => (
-                              <div key={i} className="flex items-start gap-3 text-xs sm:text-sm">
-                                <div className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0" />
-                                <div>
-                                  <p>
-                                    <span style={{ fontWeight: 500 }}>{log.old_status}</span>
-                                    <span className="text-muted-foreground"> → </span>
-                                    <span style={{ fontWeight: 500 }}>{log.new_status}</span>
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {log.note} · {format(new Date(log.timestamp), 'MMM d, h:mm a')}
-                                  </p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="rounded-xl border border-border/80 overflow-hidden bg-card/30">
-                        <div className="flex items-center gap-2 px-4 py-3 border-b border-border/80 bg-muted/20">
-                          <MessageSquare className="w-4 h-4" />
-                          <h2 className="text-sm" style={{ fontWeight: 600 }}>
-                            Comments ({c.comments.length})
-                          </h2>
-                        </div>
-                        <div className="divide-y divide-border/60">
-                          {c.comments.map(cm => (
-                            <div
-                              key={cm.id}
-                              className={`px-4 py-3 ${cm.parent_id ? 'ml-6 border-l-2 border-primary/20' : ''}`}
-                            >
-                              <div className="flex items-center gap-2 mb-1.5">
-                                <div
-                                  className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs"
-                                  style={{ fontWeight: 600 }}
-                                >
-                                  {firstNameOnly(cm.user_name).charAt(0)}
-                                </div>
-                                <span className="text-sm" style={{ fontWeight: 500 }}>
-                                  {firstNameOnly(cm.user_name)}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {formatDistanceToNow(new Date(cm.created_at), { addSuffix: true })}
-                                </span>
-                              </div>
-                              <p className="text-sm text-foreground/90 leading-relaxed">{cm.text}</p>
-                            </div>
-                          ))}
-                          {c.comments.length === 0 && (
-                            <div className="px-4 py-6 text-center text-sm text-muted-foreground">
-                              No comments yet. Be the first!
-                            </div>
-                          )}
-                        </div>
-                        <div className="p-3 border-t border-border/80 flex gap-2">
-                          <input
-                            value={newComment}
-                            onChange={e => setNewComment(e.target.value)}
-                            placeholder="Write a comment..."
-                            className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-input-background border border-border focus:ring-2 focus:ring-primary/40 outline-none text-sm"
-                          />
-                          <button
-                            type="button"
-                            disabled={!newComment.trim()}
-                            className="p-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors shrink-0"
-                            aria-label="Send comment"
-                          >
-                            <Send className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-
-                      <p className="text-xs text-muted-foreground">
-                        Prefer a dedicated URL?{' '}
-                        <Link
-                          to={paths.complaint(c.id)}
-                          className="text-primary hover:underline font-medium"
-                        >
-                          Open full page
-                        </Link>
-                      </p>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
           </div>
 
           {media && media.length > 0 && (
-            <ThoughtMediaSection images={media} title={c.title} onImageClick={onImageClick} />
+            <div className="shrink-0 self-start w-full sm:w-auto flex justify-center sm:block">
+              <ThoughtMediaSection images={media} title={c.title} onImageClick={onImageClick} />
+            </div>
           )}
         </div>
+
+        <AnimatePresence initial={false}>
+          {expanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
+              className="overflow-hidden"
+            >
+              <div className="mt-4 pt-4 border-t border-border/80 space-y-4 text-sm">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 shrink-0" />
+                    {c.location}
+                  </span>
+                  <span className="text-border">·</span>
+                  <span>Posted {format(new Date(c.created_at), 'MMM d, yyyy')}</span>
+                  <span className="text-border">·</span>
+                  <span>Updated {formatDistanceToNow(new Date(c.updated_at), { addSuffix: true })}</span>
+                </div>
+
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">Status progress</p>
+                  <StatusStepper currentStatus={c.status} />
+                  {c.status_log.length > 0 && (
+                    <div className="mt-5 pt-4 border-t border-border space-y-3">
+                      <h3 className="text-xs text-muted-foreground uppercase tracking-wider">History</h3>
+                      {c.status_log.map((log, i) => (
+                        <div key={i} className="flex items-start gap-3 text-xs sm:text-sm">
+                          <div className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0" />
+                          <div>
+                            <p>
+                              <span style={{ fontWeight: 500 }}>{log.old_status}</span>
+                              <span className="text-muted-foreground"> → </span>
+                              <span style={{ fontWeight: 500 }}>{log.new_status}</span>
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {log.note} · {format(new Date(log.timestamp), 'MMM d, h:mm a')}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-border/80 overflow-hidden bg-card/30">
+                  <div className="flex items-center gap-2 px-4 py-3 border-b border-border/80 bg-muted/20">
+                    <MessageSquare className="w-4 h-4" />
+                    <h2 className="text-sm" style={{ fontWeight: 600 }}>
+                      Comments ({c.comments.length})
+                    </h2>
+                  </div>
+                  <div className="divide-y divide-border/60">
+                    {c.comments.map(cm => (
+                      <div
+                        key={cm.id}
+                        className={`px-4 py-3 ${cm.parent_id ? 'ml-6 border-l-2 border-primary/20' : ''}`}
+                      >
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <div
+                            className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs"
+                            style={{ fontWeight: 600 }}
+                          >
+                            {firstNameOnly(cm.user_name).charAt(0)}
+                          </div>
+                          <span className="text-sm" style={{ fontWeight: 500 }}>
+                            {firstNameOnly(cm.user_name)}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDistanceToNow(new Date(cm.created_at), { addSuffix: true })}
+                          </span>
+                        </div>
+                        <p className="text-sm text-foreground/90 leading-relaxed">{cm.text}</p>
+                      </div>
+                    ))}
+                    {c.comments.length === 0 && (
+                      <div className="px-4 py-6 text-center text-sm text-muted-foreground">
+                        No comments yet. Be the first!
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3 border-t border-border/80 flex gap-2">
+                    <input
+                      value={newComment}
+                      onChange={e => setNewComment(e.target.value)}
+                      placeholder="Write a comment..."
+                      className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-input-background border border-border focus:ring-2 focus:ring-primary/40 outline-none text-sm"
+                    />
+                    <button
+                      type="button"
+                      disabled={!newComment.trim()}
+                      className="p-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors shrink-0"
+                      aria-label="Send comment"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  Prefer a dedicated URL?{' '}
+                  <Link
+                    to={paths.complaint(c.id)}
+                    className="text-primary hover:underline font-medium"
+                  >
+                    Open full page
+                  </Link>
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </article>
   );

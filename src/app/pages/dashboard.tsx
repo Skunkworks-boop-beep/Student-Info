@@ -16,7 +16,8 @@ import {
   Radio,
 } from 'lucide-react';
 import { complaints, leaderboard } from '../data/mock-data';
-import { firstNameOnly } from '../utils/display-name';
+import { firstNameOnly, userPublicLabel } from '../utils/display-name';
+import { Switch } from '../components/ui/switch';
 import { StatusBadge, PriorityBadge } from '../components/status-badge';
 import { useAuth } from '../components/auth-context';
 import { motion } from 'motion/react';
@@ -34,7 +35,7 @@ const tactical = {
 };
 
 export function DashboardPage() {
-  const { user } = useAuth();
+  const { user, campusName, anonymousMode, setAnonymousMode } = useAuth();
   const myComplaints = complaints.filter(c => c.user_id === user?.id);
   const pending = myComplaints.filter(c => c.status === 'Pending').length;
   const resolved = myComplaints.filter(c => c.status === 'Resolved').length;
@@ -82,7 +83,7 @@ export function DashboardPage() {
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
                   <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md ${tactical.borderSoft} bg-background/60 ${tactical.label}`}>
                     <Crosshair className="w-3 h-3 text-[#5c6b4a] dark:text-[#8faa7a]" />
-                    Student ops
+                    <span className="truncate max-w-[10rem] sm:max-w-[14rem]">{campusName}</span>
                   </span>
                   <h1 className="text-2xl sm:text-4xl leading-none truncate" style={{ fontWeight: 800 }}>
                     My Activity
@@ -119,14 +120,24 @@ export function DashboardPage() {
                       className={`w-14 h-14 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center text-xl sm:text-2xl shrink-0 border-2 border-[#6f7a5e]/40 dark:border-[#4a5c46]/60 bg-[#9faa8c]/25 dark:bg-[#2a3528]/50`}
                       style={{ fontWeight: 700 }}
                     >
-                      {firstNameOnly(user?.name).charAt(0)}
+                      {userPublicLabel(user, anonymousMode).charAt(0).toUpperCase()}
                     </div>
                     <div className="min-w-0">
                       <p className="text-lg sm:text-xl truncate" style={{ fontWeight: 700 }}>
-                        {firstNameOnly(user?.name)}
+                        {userPublicLabel(user, anonymousMode)}
                       </p>
-                      <p className="text-xs sm:text-sm text-muted-foreground capitalize">
-                        {user?.role === 'admin' ? 'Admin console' : 'Student'} · Campus portal
+                      <p className="text-xs sm:text-sm text-muted-foreground">
+                        {anonymousMode ? (
+                          <>
+                            <span className="text-foreground/90" style={{ fontWeight: 600 }}>Anonymous mode</span>
+                            {' · '}
+                            {user?.role === 'admin' ? 'Admin console' : 'Student'} · {campusName}
+                          </>
+                        ) : (
+                          <>
+                            {user?.role === 'admin' ? 'Admin console' : 'Student'} · {campusName}
+                          </>
+                        )}
                       </p>
                       <div className="mt-2 flex flex-col sm:flex-row sm:flex-wrap gap-x-4 gap-y-1 text-[11px] sm:text-xs text-muted-foreground">
                         <span className="inline-flex items-center gap-1">
@@ -135,8 +146,9 @@ export function DashboardPage() {
                         <span className="inline-flex items-center gap-1">
                           <Mail className="w-3.5 h-3.5" /> {user?.email}
                         </span>
-                        <span className="inline-flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5" /> Main campus
+                        <span className="inline-flex items-center gap-1 min-w-0">
+                          <MapPin className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">{campusName}</span>
                         </span>
                       </div>
                     </div>
@@ -159,6 +171,29 @@ export function DashboardPage() {
                       <p className="text-lg sm:text-xl mt-0.5" style={{ fontWeight: 700 }}>
                         {user?.streak || 0}d
                       </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-[#6f7a5e]/20 dark:border-[#4a5c46]/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className={tactical.label}>Display & privacy</p>
+                      <p className="text-[11px] sm:text-xs text-muted-foreground mt-1 leading-snug">
+                        {anonymousMode ? (
+                          <>
+                            Showing your <span className="text-foreground font-mono">@{user?.username}</span> handle in the
+                            sidebar, header, and leaderboard — not your first name.
+                          </>
+                        ) : (
+                          <>
+                            Showing your first name in the sidebar, header welcome, and your row on the leaderboard.
+                            Turn on to use only your username instead.
+                          </>
+                        )}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">Anonymous</span>
+                      <Switch checked={anonymousMode} onCheckedChange={setAnonymousMode} aria-label="Anonymous display mode" />
                     </div>
                   </div>
                 </div>
