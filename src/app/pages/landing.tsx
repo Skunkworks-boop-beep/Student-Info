@@ -247,21 +247,25 @@ export function LandingPage() {
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_100%_0%,rgba(59,130,246,0.06),transparent_45%)]" />
 
       <header className="relative z-10 border-b border-border/60 bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <Link to={paths.landing} onClick={() => play('tap')} className="flex items-center gap-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
+        <div className="mx-auto flex max-w-6xl min-h-0 items-center justify-between gap-2 px-3 py-3 sm:gap-4 sm:px-6 sm:py-4">
+          <Link
+            to={paths.landing}
+            onClick={() => play('tap')}
+            className="flex min-w-0 flex-1 items-center gap-2 sm:gap-2.5"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm sm:h-10 sm:w-10">
               <span className="text-sm" style={{ fontWeight: 800 }}>
                 S
               </span>
             </div>
-            <div className="text-left leading-tight">
-              <p className="text-sm" style={{ fontWeight: 800 }}>
+            <div className="min-w-0 text-left leading-tight">
+              <p className="truncate text-sm" style={{ fontWeight: 800 }}>
                 {APP_NAME}
               </p>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{APP_TAGLINE}</p>
+              <p className="hidden text-[10px] uppercase tracking-wider text-muted-foreground sm:block">{APP_TAGLINE}</p>
             </div>
           </Link>
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
             <SoundToggleIconButton />
             <button
               type="button"
@@ -269,7 +273,7 @@ export function LandingPage() {
                 play('theme');
                 toggleTheme();
               }}
-              className="rounded-xl border border-border/80 bg-card/90 p-2.5 transition hover:bg-accent"
+              className="shrink-0 rounded-xl border border-border/80 bg-card/90 p-2 sm:p-2.5 transition hover:bg-accent"
               aria-label="Toggle theme"
             >
               {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
@@ -278,11 +282,12 @@ export function LandingPage() {
               <Link
                 to={paths.app}
                 onClick={() => play('nav')}
-                className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm text-primary-foreground transition hover:opacity-90"
+                aria-label="Open app"
+                className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center gap-2 rounded-full bg-primary px-3 text-sm text-primary-foreground transition hover:opacity-90 sm:min-h-0 sm:min-w-0 sm:px-4 sm:py-2.5"
                 style={{ fontWeight: 600 }}
               >
-                <LayoutDashboard className="h-4 w-4" />
-                Open app
+                <LayoutDashboard className="h-5 w-5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
+                <span className="hidden sm:inline">Open app</span>
               </Link>
             )}
           </div>
