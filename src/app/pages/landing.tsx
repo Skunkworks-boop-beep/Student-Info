@@ -266,7 +266,9 @@ export function LandingPage() {
             </div>
           </Link>
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
-            <SoundToggleIconButton />
+            <div className="hidden sm:block">
+              <SoundToggleIconButton />
+            </div>
             <button
               type="button"
               onClick={() => {

@@ -163,7 +163,9 @@ export function Layout() {
               {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
             </button>
-            <SoundToggleButton />
+            <div className="hidden w-full sm:block">
+              <SoundToggleButton />
+            </div>
             <button
               onClick={() => {
                 play('logout');
