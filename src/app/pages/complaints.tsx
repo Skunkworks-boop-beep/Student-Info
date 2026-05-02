@@ -2,6 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router';
 import { paths } from '../paths';
+import { useAuth } from '../components/auth-context';
+import { getSupabaseClient } from '../../lib/supabase';
+import {
+  addComplaintCommentRow,
+  fetchLeaderboardProfiles,
+  listComplaints,
+  toggleComplaintUpvote,
+} from '../api/supabase-api';
 import {
   Search,
   Filter,
@@ -18,7 +26,7 @@ import {
   MapPin,
   Send,
 } from 'lucide-react';
-import { complaints, CATEGORIES, leaderboard, type Status, type Category, type Complaint } from '../data/mock-data';
+import { complaints, CATEGORIES, leaderboard, type Status, type Category, type Complaint, type User } from '../data/mock-data';
 import { StatusBadge, PriorityBadge } from '../components/status-badge';
 import { formatDistanceToNow, format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
@@ -162,13 +170,20 @@ function ImageLightbox({
 function ThoughtCard({
   c,
   onImageClick,
+  allowInteract,
+  onToggleUpvote,
+  onSendComment,
 }: {
   c: Complaint;
   onImageClick: (src: string, alt: string) => void;
+  allowInteract?: boolean;
+  onToggleUpvote?: () => Promise<void>;
+  onSendComment?: (text: string) => Promise<void>;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [newComment, setNewComment] = useState('');
-  const media = THOUGHT_MEDIA[c.id];
+  const [busy, setBusy] = useState(false);
+  const media = c.media_urls?.length ? c.media_urls : THOUGHT_MEDIA[c.id];
 
   return (
     <article className="premium-panel premium-hover-lift border-border/80 hover:border-primary/25 transition-colors overflow-hidden">
@@ -177,10 +192,20 @@ function ThoughtCard({
           <div className="flex gap-3 flex-1 min-w-0">
             <button
               type="button"
-              onClick={e => e.preventDefault()}
+              disabled={busy || (allowInteract && !onToggleUpvote)}
+              onClick={async e => {
+                e.preventDefault();
+                if (!allowInteract || !onToggleUpvote) return;
+                setBusy(true);
+                try {
+                  await onToggleUpvote();
+                } finally {
+                  setBusy(false);
+                }
+              }}
               className={`flex flex-col items-center gap-0 shrink-0 w-8 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:text-primary ${
                 c.upvoted_by_me ? 'text-primary' : ''
-              }`}
+              } ${allowInteract && onToggleUpvote ? 'cursor-pointer' : ''}`}
               aria-label={`${c.upvotes} upvotes`}
             >
               <ArrowUp className="w-4 h-4 shrink-0" />
@@ -361,7 +386,17 @@ function ThoughtCard({
                     />
                     <button
                       type="button"
-                      disabled={!newComment.trim()}
+                      disabled={!newComment.trim() || busy || (allowInteract && !onSendComment)}
+                      onClick={async () => {
+                        if (!allowInteract || !onSendComment || !newComment.trim()) return;
+                        setBusy(true);
+                        try {
+                          await onSendComment(newComment.trim());
+                          setNewComment('');
+                        } finally {
+                          setBusy(false);
+                        }
+                      }}
                       className="p-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors shrink-0"
                       aria-label="Send comment"
                     >
@@ -389,6 +424,8 @@ function ThoughtCard({
 }
 
 export function ComplaintsPage() {
+  const { user, backendMode } = useAuth();
+  const supabase = getSupabaseClient();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<Status | 'All'>('All');
   const [categoryFilter, setCategoryFilter] = useState<Category | 'All'>('All');
@@ -396,12 +433,48 @@ export function ComplaintsPage() {
   const [sortBy, setSortBy] = useState<'recent' | 'popular' | 'discussed'>('recent');
   const [searchError, setSearchError] = useState('');
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null);
+  const [feedComplaints, setFeedComplaints] = useState<Complaint[]>([]);
+  const [topPeople, setTopPeople] = useState<User[]>([]);
+  const [feedError, setFeedError] = useState('');
+  const cloud = backendMode === 'supabase';
+
+  const refreshThoughts = useCallback(async () => {
+    if (!cloud) {
+      setFeedComplaints(complaints);
+      setTopPeople(leaderboard.slice(0, 8));
+      setFeedError('');
+      return;
+    }
+    if (!supabase || !user) {
+      setFeedComplaints([]);
+      setTopPeople([]);
+      setFeedError('');
+      return;
+    }
+    try {
+      const [list, leaders] = await Promise.all([
+        listComplaints(supabase, user.id),
+        fetchLeaderboardProfiles(supabase, 8),
+      ]);
+      setFeedComplaints(list);
+      setTopPeople(leaders);
+      setFeedError('');
+    } catch (err) {
+      setFeedComplaints([]);
+      setTopPeople([]);
+      setFeedError(err instanceof Error ? err.message : 'Could not load thoughts. Check Supabase and try again.');
+    }
+  }, [cloud, supabase, user]);
+
+  useEffect(() => {
+    void refreshThoughts();
+  }, [refreshThoughts]);
 
   const closeLightbox = useCallback(() => setLightbox(null), []);
 
   const normalizedSearch = search.trim();
 
-  const filtered = complaints
+  const filtered = feedComplaints
     .filter(c => {
       if (
         normalizedSearch &&
@@ -428,7 +501,7 @@ export function ComplaintsPage() {
     setSearch(value.replace(/\s{2,}/g, ' '));
   };
 
-  const liveFeedItems = [...complaints]
+  const liveFeedItems = [...feedComplaints]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 8)
     .map(c => ({
@@ -439,9 +512,7 @@ export function ComplaintsPage() {
       time: formatDistanceToNow(new Date(c.created_at), { addSuffix: true }),
     }));
 
-  const activePreview = leaderboard.slice(0, 8);
-  const activeOnline = 47;
-
+  const activePreview = topPeople;
   return (
     <div className="w-full max-w-7xl mx-auto pb-8">
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_280px] xl:grid-cols-[minmax(0,1fr)_300px] lg:gap-8 xl:gap-10 lg:items-start">
@@ -451,8 +522,9 @@ export function ComplaintsPage() {
           Thoughts Feed
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Read-only feed from the bundled thought catalog. Filter by status and category, sort by date, votes, or reply
-          count. Tap a thought to expand the thread in place; a few cards include photos you can tap to enlarge.
+          {cloud
+            ? 'Live campus thoughts from your Supabase project — upvote, comment, and open threads. Filter and sort like before; photos come from attachments on each thought.'
+            : 'Read-only feed from the bundled thought catalog. Filter by status and category, sort by date, votes, or reply count. Tap a thought to expand the thread in place; a few cards include photos you can tap to enlarge.'}
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary text-xs">
@@ -550,8 +622,39 @@ export function ComplaintsPage() {
       </p>
 
       <div className="space-y-4">
+        {feedError && cloud && (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+            {feedError}
+          </div>
+        )}
         {filtered.map(c => (
-          <ThoughtCard key={c.id} c={c} onImageClick={(src, alt) => setLightbox({ src, alt })} />
+          <ThoughtCard
+            key={c.id}
+            c={c}
+            onImageClick={(src, alt) => setLightbox({ src, alt })}
+            allowInteract={cloud && Boolean(user && supabase)}
+            onToggleUpvote={
+              cloud && user && supabase
+                ? async () => {
+                    await toggleComplaintUpvote(supabase, c.id, user.id, c.upvoted_by_me);
+                    await refreshThoughts();
+                  }
+                : undefined
+            }
+            onSendComment={
+              cloud && user && supabase
+                ? async text => {
+                    await addComplaintCommentRow(supabase, {
+                      complaint_id: c.id,
+                      user_id: user.id,
+                      text,
+                      parent_id: null,
+                    });
+                    await refreshThoughts();
+                  }
+                : undefined
+            }
+          />
         ))}
       </div>
 
@@ -600,10 +703,16 @@ export function ComplaintsPage() {
               </h2>
             </div>
             <p className="text-xs text-muted-foreground mb-3">
-              <span className="text-foreground tabular-nums" style={{ fontWeight: 600 }}>
-                {activeOnline}
-              </span>{' '}
-              online now
+              {cloud
+                ? `${topPeople.length} on the leaderboard snapshot`
+                : (
+                  <>
+                    <span className="text-foreground tabular-nums" style={{ fontWeight: 600 }}>
+                      {47}
+                    </span>{' '}
+                    online now (demo)
+                  </>
+                )}
             </p>
             <div className="flex flex-wrap gap-2">
               {activePreview.map(u => (

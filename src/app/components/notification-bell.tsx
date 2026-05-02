@@ -1,25 +1,63 @@
-import { useState } from 'react';
-import { Bell, X, MessageSquare, RefreshCw, AlertCircle, CheckCircle2, AtSign } from 'lucide-react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { Bell, X, MessageSquare, RefreshCw, AlertCircle, CheckCircle2, AtSign, Heart, UserPlus } from 'lucide-react';
 import { notifications } from '../data/mock-data';
 import { formatDistanceToNow } from 'date-fns';
 import { useSound } from '../audio/sound-context';
+import { useAuth } from './auth-context';
+import { getSupabaseClient } from '../../lib/supabase';
+import { listNotifications, markAllNotificationsRead } from '../api/supabase-api';
+import type { Notification } from '../data/mock-data';
 
-const TYPE_ICON: Record<string, React.ReactNode> = {
+const TYPE_ICON: Record<string, ReactNode> = {
   status_change: <RefreshCw className="w-4 h-4 text-blue-500" />,
   new_comment: <MessageSquare className="w-4 h-4 text-purple-500" />,
   mention: <AtSign className="w-4 h-4 text-primary" />,
   complaint_resolved: <CheckCircle2 className="w-4 h-4 text-green-500" />,
   system_alert: <AlertCircle className="w-4 h-4 text-amber-500" />,
+  post_like: <Heart className="w-4 h-4 text-rose-500" />,
+  new_follower: <UserPlus className="w-4 h-4 text-emerald-500" />,
+  post_comment: <MessageSquare className="w-4 h-4 text-sky-500" />,
 };
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState(notifications);
+  const [items, setItems] = useState<Notification[]>([]);
   const unread = items.filter(n => !n.is_read).length;
   const { play } = useSound();
+  const { user, backendMode } = useAuth();
+  const supabase = getSupabaseClient();
+  const cloud = backendMode === 'supabase';
+
+  const reload = useCallback(async () => {
+    if (!cloud) {
+      setItems(notifications);
+      return;
+    }
+    if (!supabase || !user) {
+      setItems([]);
+      return;
+    }
+    try {
+      const list = await listNotifications(supabase, user.id);
+      setItems(list);
+    } catch {
+      setItems([]);
+    }
+  }, [cloud, supabase, user]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
 
   const markAllRead = () => {
     play('tap');
+    if (cloud && supabase && user) {
+      void (async () => {
+        await markAllNotificationsRead(supabase, user.id);
+        await reload();
+      })();
+      return;
+    }
     setItems(items.map(n => ({ ...n, is_read: true })));
   };
 
@@ -78,20 +116,22 @@ export function NotificationBell() {
               {items.map(n => (
                 <div
                   key={n.id}
-                  className={`flex gap-3 p-4 border-b border-border hover:bg-accent/40 transition-colors ${
-                    !n.is_read ? 'bg-primary/5' : ''
-                  }`}
+                  className={`p-4 border-b border-border last:border-0 text-sm ${!n.is_read ? 'bg-primary/5' : ''}`}
                 >
-                  <div className="mt-0.5">{TYPE_ICON[n.type]}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm leading-snug">{n.message}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
-                    </p>
+                  <div className="flex gap-3">
+                    <div className="mt-0.5">{TYPE_ICON[n.type] ?? <Bell className="w-4 h-4" />}</div>
+                    <div>
+                      <p className="leading-snug">{n.message}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
+                      </p>
+                    </div>
                   </div>
-                  {!n.is_read && <div className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />}
                 </div>
               ))}
+              {items.length === 0 && (
+                <p className="p-6 text-sm text-muted-foreground text-center">No notifications yet.</p>
+              )}
             </div>
           </div>
         </>

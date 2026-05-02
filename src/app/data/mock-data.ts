@@ -14,6 +14,10 @@ export interface User {
   university_name?: string;
   /** When true, UI shows `username` instead of first name (sidebar, dashboard, leaderboard). */
   anonymous_mode?: boolean;
+  /** ISO country code or free text (Supabase profiles). */
+  country_code?: string;
+  field_of_study?: string;
+  bio?: string;
 }
 
 export interface Complaint {
@@ -34,6 +38,8 @@ export interface Complaint {
   comments: Comment[];
   status_log: StatusLog[];
   rating?: number;
+  /** When set (e.g. from Supabase), feed uses these instead of static demo media. */
+  media_urls?: string[];
 }
 
 export interface Comment {
@@ -55,10 +61,19 @@ export interface StatusLog {
 
 export interface Notification {
   id: string;
-  type: 'status_change' | 'new_comment' | 'mention' | 'complaint_resolved' | 'system_alert';
+  type:
+    | 'status_change'
+    | 'new_comment'
+    | 'mention'
+    | 'complaint_resolved'
+    | 'system_alert'
+    | 'post_like'
+    | 'new_follower'
+    | 'post_comment';
   message: string;
   is_read: boolean;
   complaint_id?: string;
+  post_id?: string;
   created_at: string;
 }
 
@@ -231,6 +246,7 @@ export const notifications: Notification[] = [
 export const xpActions = [
   { action: 'Submit a complaint', xp: '+10 XP' },
   { action: 'Comment on a complaint', xp: '+5 XP' },
+  { action: 'Publish a campus post', xp: '+3 XP' },
   { action: 'Complaint resolved (submitter)', xp: '+20 XP' },
   { action: 'Peer solution marked helpful', xp: '+15 XP' },
   { action: 'Donate a Support Token', xp: '+8 XP' },

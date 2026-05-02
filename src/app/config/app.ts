@@ -15,3 +15,6 @@ export const DEMO_USERNAME_STUDENT = 'student';
 export const DEMO_USERNAME_ADMIN = 'admin';
 
 export const USERNAME_PLACEHOLDER = 'your.username';
+
+/** Support inbox shown on Support page (mailto). Set `VITE_SUPPORT_EMAIL` in production. */
+export const SUPPORT_EMAIL = (import.meta.env.VITE_SUPPORT_EMAIL as string | undefined)?.trim() ?? '';

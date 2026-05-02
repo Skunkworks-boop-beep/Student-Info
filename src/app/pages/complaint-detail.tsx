@@ -1,38 +1,91 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router';
 import { ArrowLeft, ArrowUp, MapPin, Send, MessageSquare } from 'lucide-react';
 import { paths } from '../paths';
-import { complaints } from '../data/mock-data';
+import { complaints, type Complaint } from '../data/mock-data';
 import { firstNameOnly } from '../utils/display-name';
 import { StatusBadge, PriorityBadge } from '../components/status-badge';
 import { StatusStepper } from '../components/status-stepper';
 import { formatDistanceToNow, format } from 'date-fns';
+import { useAuth } from '../components/auth-context';
+import { getSupabaseClient } from '../../lib/supabase';
+import {
+  addComplaintCommentRow,
+  getComplaintById,
+  toggleComplaintUpvote,
+} from '../api/supabase-api';
 
 export function ComplaintDetailPage() {
   const { id } = useParams();
-  const complaint = complaints.find(c => c.id === id);
+  const { user, backendMode } = useAuth();
+  const supabase = getSupabaseClient();
+  const cloud = backendMode === 'supabase';
+
+  const [complaint, setComplaint] = useState<Complaint | null>(null);
+  const [loading, setLoading] = useState(cloud);
+  const [loadError, setLoadError] = useState('');
   const [newComment, setNewComment] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const refresh = useCallback(async () => {
+    if (!id) return;
+    if (!cloud) {
+      setComplaint(complaints.find(c => c.id === id) ?? null);
+      setLoadError('');
+      setLoading(false);
+      return;
+    }
+    if (!supabase) {
+      setComplaint(null);
+      setLoadError('');
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setLoadError('');
+    try {
+      const row = await getComplaintById(supabase, id, user?.id);
+      setComplaint(row);
+    } catch {
+      setComplaint(null);
+      setLoadError('Could not load this thought from Supabase.');
+    } finally {
+      setLoading(false);
+    }
+  }, [id, cloud, supabase, user?.id]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  if (loading) {
+    return (
+      <div className="text-center py-16 text-muted-foreground text-sm">Loading thought…</div>
+    );
+  }
 
   if (!complaint) {
     return (
       <div className="text-center py-16">
-        <p className="text-muted-foreground">Thought not found.</p>
+        <p className="text-muted-foreground">{loadError || 'Thought not found.'}</p>
         <Link to={paths.complaints} className="text-primary hover:underline text-sm mt-2 inline-block">Back to thoughts</Link>
       </div>
     );
   }
 
+  const canInteract = cloud && Boolean(user && supabase);
+
   return (
     <div className="premium-page max-w-5xl">
-      {/* Back */}
       <Link to={paths.complaints} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
         <ArrowLeft className="w-4 h-4" /> Back to thoughts
       </Link>
       <p className="text-xs text-muted-foreground mt-2 mb-4">
-        Thread content, status, and comments load from the static catalog—admin queue edits are not merged here yet.
+        {cloud
+          ? 'Live thread from Supabase — your votes and comments sync for everyone on this project.'
+          : 'Thread content loads from the local demo catalog. Connect Supabase for a shared live thread.'}
       </p>
 
-      {/* Header card */}
       <div className="premium-panel p-6">
         <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
           <div className="flex-1">
@@ -46,7 +99,23 @@ export function ComplaintDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border ${complaint.upvoted_by_me ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:bg-accent'} transition-colors`}>
+            <button
+              type="button"
+              disabled={!canInteract || busy}
+              onClick={async () => {
+                if (!canInteract || !user || !supabase) return;
+                setBusy(true);
+                try {
+                  await toggleComplaintUpvote(supabase, complaint.id, user.id, complaint.upvoted_by_me);
+                  await refresh();
+                } finally {
+                  setBusy(false);
+                }
+              }}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border transition-colors ${
+                complaint.upvoted_by_me ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:bg-accent'
+              } disabled:opacity-50`}
+            >
               <ArrowUp className="w-4 h-4" />
               <span className="text-sm" style={{ fontWeight: 600 }}>{complaint.upvotes}</span>
             </button>
@@ -62,7 +131,6 @@ export function ComplaintDetailPage() {
         <p className="text-sm leading-relaxed text-foreground/90">{complaint.description}</p>
       </div>
 
-      {/* Status Stepper */}
       <div className="premium-panel p-6">
         <h2 className="text-sm mb-5" style={{ fontWeight: 600 }}>Status Progress</h2>
         <StatusStepper currentStatus={complaint.status} />
@@ -87,7 +155,6 @@ export function ComplaintDetailPage() {
         )}
       </div>
 
-      {/* Comments */}
       <div className="premium-panel">
         <div className="flex items-center gap-2 p-5 border-b border-border">
           <MessageSquare className="w-4 h-4" />
@@ -115,17 +182,34 @@ export function ComplaintDetailPage() {
           )}
         </div>
 
-        {/* Add comment */}
         <div className="p-4 border-t border-border">
           <div className="flex gap-2">
             <input
               value={newComment}
               onChange={e => setNewComment(e.target.value)}
-              placeholder="Write a comment..."
-              className="flex-1 px-4 py-2.5 rounded-xl bg-input-background border border-border focus:ring-2 focus:ring-primary/40 outline-none text-sm"
+              placeholder={canInteract ? 'Write a comment…' : 'Sign in with live backend to comment'}
+              disabled={!canInteract}
+              className="flex-1 px-4 py-2.5 rounded-xl bg-input-background border border-border focus:ring-2 focus:ring-primary/40 outline-none text-sm disabled:opacity-60"
             />
             <button
-              disabled={!newComment.trim()}
+              type="button"
+              disabled={!canInteract || !newComment.trim() || busy}
+              onClick={async () => {
+                if (!canInteract || !user || !supabase || !newComment.trim()) return;
+                setBusy(true);
+                try {
+                  await addComplaintCommentRow(supabase, {
+                    complaint_id: complaint.id,
+                    user_id: user.id,
+                    text: newComment.trim(),
+                    parent_id: null,
+                  });
+                  setNewComment('');
+                  await refresh();
+                } finally {
+                  setBusy(false);
+                }
+              }}
               className="p-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               <Send className="w-4 h-4" />

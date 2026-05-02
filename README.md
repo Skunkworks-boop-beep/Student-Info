@@ -14,6 +14,7 @@ Campus issue intelligence for students and administrators: thoughts feed, tactic
 | [**docs/README.md**](docs/README.md) | Index of all documentation |
 | [**docs/CREDITS.md**](docs/CREDITS.md) | Core team (first names), roles, and repository/organization attribution |
 | [**docs/FEATURES.md**](docs/FEATURES.md) | Feature framework: capabilities, summaries, and contributor mapping |
+| [**RELEASE_CHECKLIST.md**](RELEASE_CHECKLIST.md) | Production deploy: migrations, Auth, Resend, Storage |
 
 ---
 
@@ -36,9 +37,18 @@ npm run build
 
 Output is written to `dist/`.
 
-### Demo sign-in
+### Supabase (production / staging)
 
-The app uses mock authentication. Use any password with a demo email such as `student@university.edu` or `admin@university.edu` (see [`src/app/config/app.ts`](src/app/config/app.ts)). Replace with your institution’s identity provider for production.
+1. Copy [`.env.example`](.env.example) to `.env` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+2. Run SQL migrations **in order** in the Supabase SQL Editor (see `supabase/migrations/`).
+3. Create the **`complaint-media`** bucket is created by migration `20260430150000_storage_media_workflow_rules.sql` (public read, authenticated upload under `userId/...`).
+4. Optional: `VITE_SUPPORT_EMAIL` for the Support page mailto target.
+
+When Supabase env vars are set, the app uses real Auth, Storage uploads on thoughts, live feed, leaderboard, notifications, admin analytics, workflow rules, and map heat from **open** thoughts.
+
+### Local demo mode
+
+Leave `VITE_SUPABASE_*` unset to use bundled sample data and mock sign-in (see [`src/app/config/app.ts`](src/app/config/app.ts)).
 
 ---
 
@@ -47,7 +57,7 @@ The app uses mock authentication. Use any password with a demo email such as `st
 - **React** + **TypeScript** + **Vite**
 - **Tailwind CSS** v4
 - **React Router** v7
-- **Leaflet** for maps
+- **Supabase** (Auth, Postgres, RLS, Storage, optional Edge Functions)
 - **Recharts**, **Radix UI**, **Motion**, **Lucide**, and others — see `package.json`
 
 ---

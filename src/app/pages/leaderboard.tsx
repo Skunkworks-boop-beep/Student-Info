@@ -1,15 +1,55 @@
 import { Medal, Zap, Flame, Crown } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { leaderboard, xpActions } from '../data/mock-data';
 import { firstNameOnly, userPublicLabel } from '../utils/display-name';
 import { useAuth } from '../components/auth-context';
+import { getSupabaseClient } from '../../lib/supabase';
+import { fetchLeaderboardProfiles } from '../api/supabase-api';
+import type { User } from '../data/mock-data';
 
 export function LeaderboardPage() {
-  const { user: sessionUser, anonymousMode } = useAuth();
-  const sorted = [...leaderboard].sort((a, b) => b.uni_xp - a.uni_xp);
+  const { user: sessionUser, anonymousMode, backendMode } = useAuth();
+  const supabase = getSupabaseClient();
+  const cloud = backendMode === 'supabase';
+  const [rows, setRows] = useState<User[]>([]);
+  const [loadError, setLoadError] = useState('');
+
+  useEffect(() => {
+    if (!cloud) {
+      setRows(leaderboard);
+      setLoadError('');
+      return;
+    }
+    if (!supabase) {
+      setRows([]);
+      setLoadError('');
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await fetchLeaderboardProfiles(supabase, 80);
+        if (!cancelled) {
+          setRows(r);
+          setLoadError('');
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setRows([]);
+          setLoadError(err instanceof Error ? err.message : 'Could not load leaderboard.');
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [cloud, supabase]);
+
+  const sorted = [...rows].sort((a, b) => b.uni_xp - a.uni_xp);
   const myIdx = sessionUser ? sorted.findIndex(u => u.id === sessionUser.id) : -1;
   const myRank = myIdx >= 0 ? myIdx + 1 : null;
 
-  const labelFor = (entry: (typeof leaderboard)[0]) => {
+  const labelFor = (entry: User) => {
     if (sessionUser && entry.id === sessionUser.id) {
       return userPublicLabel(sessionUser, anonymousMode);
     }
@@ -24,7 +64,12 @@ export function LeaderboardPage() {
       <div>
         <h1 className="text-3xl" style={{ fontWeight: 700 }}>UNI XP Leaderboard</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Rankings and XP actions shown here come from the bundled leaderboard sample—not live competition data.
+          {cloud
+            ? 'Live rankings from your Supabase project — XP updates when students post thoughts, comments, and campus updates.'
+            : 'Rankings and XP actions come from the built-in sample roster for local demo mode.'}
+          {loadError && cloud && (
+            <span className="block mt-2 text-red-600 dark:text-red-400">{loadError}</span>
+          )}
           {anonymousMode && sessionUser && (
             <span className="block mt-1 text-foreground/80">
               Your row uses your username because anonymous mode is on (toggle on the dashboard).
@@ -43,7 +88,7 @@ export function LeaderboardPage() {
             <div>
               <p style={{ fontWeight: 600 }}>{sessionUser ? userPublicLabel(sessionUser, anonymousMode) : '—'}</p>
               <p className="text-sm opacity-80">
-                {myRank != null ? 'Your current ranking' : 'Your account is not in this sample board'}
+                {myRank != null ? 'Your current ranking' : cloud ? 'Complete a profile activity to appear here' : 'Your account is not on the demo leaderboard'}
               </p>
             </div>
           </div>

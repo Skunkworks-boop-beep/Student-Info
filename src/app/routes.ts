@@ -16,6 +16,8 @@ import { AdminUsersPage } from './pages/admin-users';
 import { AdminHeatmapPage } from './pages/admin-heatmap';
 import { AdminRulesPage } from './pages/admin-rules';
 import { AIAssistantPage } from './pages/ai-assistant';
+import { FeedPage } from './pages/feed';
+import { ProfilePage } from './pages/profile';
 
 export const router = createBrowserRouter([
   { path: '/', Component: LandingPage },
@@ -32,6 +34,8 @@ export const router = createBrowserRouter([
       { path: 'map', Component: CampusMapPage },
       { path: 'support', Component: DevSupportPage },
       { path: 'assistant', Component: AIAssistantPage },
+      { path: 'feed', Component: FeedPage },
+      { path: 'profile/:username', Component: ProfilePage },
       {
         Component: RequireAdmin,
         children: [

@@ -15,6 +15,7 @@ import {
 
 export function LoginPage() {
   const [searchParams] = useSearchParams();
+  const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -22,18 +23,73 @@ export function LoginPage() {
   const [showPw, setShowPw] = useState(false);
   const [isRegister, setIsRegister] = useState(() => searchParams.get('mode') === 'signup');
   const [error, setError] = useState('');
-  const { login, signup, user } = useAuth();
+  const { login, signup, user, backendMode } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { play } = useSound();
   const navigate = useNavigate();
+  const cloud = backendMode === 'supabase';
 
   if (user) {
     return <Navigate to={paths.app} replace />;
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (cloud) {
+      if (!email.trim() || !password) {
+        setError('Please enter email and password.');
+        play('error');
+        return;
+      }
+      if (password.length < 6) {
+        setError('Password must be at least 6 characters.');
+        play('error');
+        return;
+      }
+      if (isRegister) {
+        if (!fullName.trim()) {
+          setError('Please enter your full name.');
+          play('error');
+          return;
+        }
+        if (!universityName.trim()) {
+          setError('Please enter your university name.');
+          play('error');
+          return;
+        }
+        if (!username.trim()) {
+          setError('Please choose a username (handle).');
+          play('error');
+          return;
+        }
+        const res = await signup({
+          email: email.trim(),
+          username: username.trim(),
+          password,
+          name: fullName.trim(),
+          university_name: universityName.trim(),
+        });
+        if (!res.ok) {
+          setError(res.error);
+          play('error');
+          return;
+        }
+        play('success');
+        navigate(paths.app);
+        return;
+      }
+      const res = await login(email.trim().toLowerCase(), password);
+      if (!res.ok) {
+        setError(res.error);
+        play('error');
+        return;
+      }
+      play('success');
+      navigate(paths.app);
+      return;
+    }
+
     if (!username.trim() || !password) {
       setError('Please enter username and password.');
       play('error');
@@ -56,7 +112,7 @@ export function LoginPage() {
         play('error');
         return;
       }
-      const res = signup({
+      const res = await signup({
         username: username.trim(),
         password,
         name: fullName.trim(),
@@ -72,7 +128,7 @@ export function LoginPage() {
       return;
     }
 
-    const res = login(username.trim(), password);
+    const res = await login(username.trim(), password);
     if (!res.ok) {
       setError(res.error);
       play('error');
@@ -118,15 +174,16 @@ export function LoginPage() {
           </div>
           <h1 className="text-3xl" style={{ fontWeight: 700 }}>Student.Info</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Sign in with your username and password. On sign up, add your university — that name appears across your
-            campus dashboards and shell.
+            {cloud
+              ? 'Sign in with email and password. Your handle and school live in your global student profile.'
+              : 'Sign in with your username and password. On sign up, add your university — that name appears across your campus dashboards and shell.'}
           </p>
         </div>
 
         <div className="premium-panel premium-hover-lift p-6 shadow-none">
           <h2 className="text-lg mb-1" style={{ fontWeight: 600 }}>{isRegister ? 'Create account' : 'Welcome back'}</h2>
           <p className="text-sm text-muted-foreground mb-6">
-            {isRegister ? 'Choose a username and add your school' : 'Sign in to your account'}
+            {isRegister ? (cloud ? 'Email, handle, and school' : 'Choose a username and add your school') : 'Sign in to your account'}
           </p>
 
           {error && (
@@ -158,24 +215,42 @@ export function LoginPage() {
                     autoComplete="organization"
                     value={universityName}
                     onChange={e => { setUniversityName(e.target.value); setError(''); }}
-                    placeholder="e.g. State University"
+                    placeholder="e.g. University of Cape Town"
                     className="w-full px-4 py-2.5 rounded-xl bg-input-background border border-border focus:ring-2 focus:ring-primary/40 outline-none transition"
                   />
                 </div>
               </>
             )}
-            <div>
-              <label htmlFor="username" className="text-sm text-muted-foreground mb-1.5 block">Username</label>
-              <input
-                id="username"
-                type="text"
-                autoComplete="username"
-                value={username}
-                onChange={e => { setUsername(e.target.value); setError(''); }}
-                placeholder={USERNAME_PLACEHOLDER}
-                className="w-full px-4 py-2.5 rounded-xl bg-input-background border border-border focus:ring-2 focus:ring-primary/40 outline-none transition"
-              />
-            </div>
+            {cloud && (
+              <div>
+                <label htmlFor="email" className="text-sm text-muted-foreground mb-1.5 block">Email</label>
+                <input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={e => { setEmail(e.target.value); setError(''); }}
+                  placeholder="you@university.edu"
+                  className="w-full px-4 py-2.5 rounded-xl bg-input-background border border-border focus:ring-2 focus:ring-primary/40 outline-none transition"
+                />
+              </div>
+            )}
+            {(isRegister || !cloud) && (
+              <div>
+                <label htmlFor="username" className="text-sm text-muted-foreground mb-1.5 block">
+                  {cloud ? 'Username (public handle)' : 'Username'}
+                </label>
+                <input
+                  id="username"
+                  type="text"
+                  autoComplete="username"
+                  value={username}
+                  onChange={e => { setUsername(e.target.value); setError(''); }}
+                  placeholder={USERNAME_PLACEHOLDER}
+                  className="w-full px-4 py-2.5 rounded-xl bg-input-background border border-border focus:ring-2 focus:ring-primary/40 outline-none transition"
+                />
+              </div>
+            )}
             <div>
               <label htmlFor="password" className="text-sm text-muted-foreground mb-1.5 block">Password</label>
               <div className="relative">
@@ -226,43 +301,46 @@ export function LoginPage() {
             </p>
           </div>
 
-          <div className="mt-5 pt-5 border-t border-border">
-            <p className="text-xs text-center text-muted-foreground mb-3">Sample accounts</p>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  const res = login(DEMO_USERNAME_STUDENT, DEMO_PASSWORD);
-                  if (!res.ok) return;
-                  play('success');
-                  navigate(paths.app);
-                }}
-                className="py-2 px-3 rounded-xl border border-border hover:bg-accent text-sm transition-colors"
-              >
-                Student ({DEMO_USERNAME_STUDENT})
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const res = login(DEMO_USERNAME_ADMIN, DEMO_PASSWORD);
-                  if (!res.ok) return;
-                  play('success');
-                  navigate(paths.app);
-                }}
-                className="py-2 px-3 rounded-xl border border-border hover:bg-accent text-sm transition-colors"
-              >
-                Admin ({DEMO_USERNAME_ADMIN})
-              </button>
+          {!cloud && (
+            <div className="mt-5 pt-5 border-t border-border">
+              <p className="text-xs text-center text-muted-foreground mb-3">Sample accounts</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const res = await login(DEMO_USERNAME_STUDENT, DEMO_PASSWORD);
+                    if (!res.ok) return;
+                    play('success');
+                    navigate(paths.app);
+                  }}
+                  className="py-2 px-3 rounded-xl border border-border hover:bg-accent text-sm transition-colors"
+                >
+                  Student ({DEMO_USERNAME_STUDENT})
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const res = await login(DEMO_USERNAME_ADMIN, DEMO_PASSWORD);
+                    if (!res.ok) return;
+                    play('success');
+                    navigate(paths.app);
+                  }}
+                  className="py-2 px-3 rounded-xl border border-border hover:bg-accent text-sm transition-colors"
+                >
+                  Admin ({DEMO_USERNAME_ADMIN})
+                </button>
+              </div>
+              <p className="text-[11px] text-center text-muted-foreground mt-2">
+                Password for both: <span className="font-mono">{DEMO_PASSWORD}</span>
+              </p>
             </div>
-            <p className="text-[11px] text-center text-muted-foreground mt-2">
-              Password for both: <span className="font-mono">{DEMO_PASSWORD}</span>
-            </p>
-          </div>
+          )}
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-6 max-w-sm mx-auto leading-relaxed">
-          Accounts are stored in this browser only (local demo). Sign up sets your university label for the in-app
-          experience; it is not sent to a server.
+          {cloud
+            ? 'Live mode: accounts and data are stored in your Supabase project. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY when deploying.'
+            : 'Accounts are stored in this browser only (local demo). Sign up sets your university label for the in-app experience; it is not sent to a server.'}
         </p>
       </motion.div>
     </div>

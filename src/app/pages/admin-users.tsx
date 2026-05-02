@@ -1,15 +1,19 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { Search, Zap, Ban, RotateCcw, Crosshair, Mail, Calendar, MessageSquare, Hash, Activity } from 'lucide-react';
 import { motion } from 'motion/react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { complaints, leaderboard, type User } from '../data/mock-data';
 import { firstNameOnly } from '../utils/display-name';
 import { adminTactical } from '../admin-tactical-ui';
+import { useAuth } from '../components/auth-context';
+import { getSupabaseClient } from '../../lib/supabase';
+import { listComplaints, listProfilesRoster } from '../api/supabase-api';
+import type { Complaint } from '../data/mock-data';
 
 function displayEmail(u: User): string {
   if (u.email?.trim()) return u.email;
   const slug = firstNameOnly(u.name).toLowerCase().replace(/[^a-z0-9]/g, '') || 'user';
-  return `${slug}.${u.id}@students.university.edu`;
+  return `${slug}.${u.id.slice(0, 8)}@students.profile`;
 }
 
 function memberSinceLabel(created: string): string {
@@ -21,11 +25,11 @@ function memberSinceLabel(created: string): string {
   }
 }
 
-function userInsights(userId: string) {
+function userInsights(userId: string, thoughtData: Complaint[]) {
   let reports = 0;
   let replies = 0;
   const times: number[] = [];
-  for (const c of complaints) {
+  for (const c of thoughtData) {
     if (c.user_id === userId) {
       reports += 1;
       times.push(new Date(c.updated_at).getTime(), new Date(c.created_at).getTime());
@@ -42,16 +46,51 @@ function userInsights(userId: string) {
 }
 
 export function AdminUsersPage() {
+  const { backendMode } = useAuth();
+  const supabase = getSupabaseClient();
+  const cloud = backendMode === 'supabase';
+
+  const [roster, setRoster] = useState<User[]>([]);
+  const [thoughtData, setThoughtData] = useState<Complaint[]>([]);
+  const [loadError, setLoadError] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!cloud || !supabase) {
+      setRoster(leaderboard);
+      setThoughtData(complaints);
+      setLoadError(false);
+      return;
+    }
+    try {
+      const [profiles, thoughts] = await Promise.all([
+        listProfilesRoster(supabase, 300),
+        listComplaints(supabase, undefined),
+      ]);
+      setRoster(profiles);
+      setThoughtData(thoughts);
+      setLoadError(false);
+    } catch {
+      setRoster([]);
+      setThoughtData([]);
+      setLoadError(true);
+    }
+  }, [cloud, supabase]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
   const [search, setSearch] = useState('');
   const users = useMemo(
     () =>
-      leaderboard.filter(
+      roster.filter(
         u =>
           u.name.toLowerCase().includes(search.toLowerCase()) ||
+          (u.username ?? '').toLowerCase().includes(search.toLowerCase()) ||
           displayEmail(u).toLowerCase().includes(search.toLowerCase()) ||
           u.id.toLowerCase().includes(search.toLowerCase())
       ),
-    [search]
+    [search, roster]
   );
 
   return (
@@ -78,13 +117,16 @@ export function AdminUsersPage() {
               <span
                 className={`text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded-md border ${adminTactical.borderSoft} text-muted-foreground`}
               >
-                {leaderboard.length} students
+                {roster.length} profiles
               </span>
             </div>
           </div>
           <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
-            Leaderboard-derived roster with sample emails, UNI XP, streaks, badges, and activity inferred from the static
-            thought and comment data (reports, thread replies, last touch).
+            {cloud
+              ? loadError
+                ? 'Could not load the roster from Supabase. Confirm you are signed in as admin and that RLS policies allow reading profiles and complaints.'
+                : 'Live roster from Supabase profiles. Email login addresses live in Auth — values shown here are display placeholders unless you extend the schema.'
+              : 'Leaderboard-derived roster with sample emails, UNI XP, streaks, badges, and activity inferred from static thought and comment data.'}
           </p>
         </div>
       </motion.div>
@@ -98,16 +140,22 @@ export function AdminUsersPage() {
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search by name, email, or ID…"
+              placeholder="Search by name, email, handle, or ID…"
               className={`w-full pl-10 pr-4 py-2.5 rounded-xl bg-background/80 border ${adminTactical.borderSoft} focus:ring-2 focus:ring-primary/40 outline-none text-sm`}
             />
           </div>
         </div>
       </div>
 
+      {loadError && cloud && (
+        <p className="text-sm text-red-600 dark:text-red-400 text-center py-4">
+          Failed to load live roster.
+        </p>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {users.map((u, i) => {
-          const { reports, replies, lastActive } = userInsights(u.id);
+          const { reports, replies, lastActive } = userInsights(u.id, thoughtData);
           const displayName = firstNameOnly(u.name);
           return (
             <motion.div
@@ -139,6 +187,9 @@ export function AdminUsersPage() {
                           {u.role}
                         </span>
                       </div>
+                      {u.username && (
+                        <p className={`${adminTactical.label} mt-0.5`}>@{u.username}</p>
+                      )}
                       <p className={`${adminTactical.label} mt-1`}>ID · {u.id}</p>
                       <div className="mt-2 flex items-start gap-2 text-sm text-muted-foreground">
                         <Mail className="w-4 h-4 shrink-0 mt-0.5 text-[#5c6b4a] dark:text-[#8faa7a]" />
@@ -150,14 +201,14 @@ export function AdminUsersPage() {
                     <button
                       type="button"
                       className={`p-2 rounded-xl border ${adminTactical.borderSoft} hover:bg-accent/80 transition-colors text-muted-foreground`}
-                      title="Reset password"
+                      title="Use Supabase Auth admin to reset password"
                     >
                       <RotateCcw className="w-4 h-4" />
                     </button>
                     <button
                       type="button"
                       className="p-2 rounded-xl border border-red-500/30 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-red-500"
-                      title="Suspend"
+                      title="Use Supabase dashboard to ban or delete user"
                     >
                       <Ban className="w-4 h-4" />
                     </button>

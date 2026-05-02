@@ -29,6 +29,9 @@ import {
 } from '../components/ui/dropdown-menu';
 import { adminTactical } from '../admin-tactical-ui';
 import { useSound } from '../audio/sound-context';
+import { useAuth } from '../components/auth-context';
+import { getSupabaseClient } from '../../lib/supabase';
+import { listComplaints, updateComplaintStatusAdmin } from '../api/supabase-api';
 
 function cloneComplaints(source: Complaint[]): Complaint[] {
   return source.map(c => ({ ...c, comments: [...c.comments], status_log: [...c.status_log] }));
@@ -100,7 +103,7 @@ function AdminComplaintCard({
   onToggleSelect: () => void;
   actionMenu: string | null;
   setActionMenu: (id: string | null) => void;
-  onStatusChange: (id: string, status: Status, title: string) => void;
+  onStatusChange: (id: string, status: Status, title: string) => void | Promise<void>;
   showFlash: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -185,7 +188,7 @@ function AdminComplaintCard({
                               key={s}
                               type="button"
                               role="menuitem"
-                              onClick={() => onStatusChange(c.id, s, c.title)}
+                              onClick={() => void onStatusChange(c.id, s, c.title)}
                               className={`w-full px-4 py-2 text-sm text-left hover:bg-accent transition-colors flex items-center gap-2 ${
                                 c.status === s ? 'bg-accent/60' : ''
                               }`}
@@ -378,6 +381,10 @@ function AdminComplaintCard({
 
 export function AdminComplaintsPage() {
   const { play } = useSound();
+  const { user, backendMode } = useAuth();
+  const supabase = getSupabaseClient();
+  const cloud = backendMode === 'supabase';
+
   const [items, setItems] = useState<Complaint[]>(() => cloneComplaints(complaints));
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<Status | 'All'>('All');
@@ -448,9 +455,42 @@ export function AdminComplaintsPage() {
 
   const similarIdeas = useMemo(() => buildSimilarIdeasSummary(items), [items]);
 
+  const refreshItems = useCallback(async () => {
+    if (!cloud || !supabase) {
+      setItems(cloneComplaints(complaints));
+      return;
+    }
+    try {
+      const list = await listComplaints(supabase, user?.id);
+      setItems(list);
+    } catch {
+      toast.error('Could not load thoughts from the server.');
+      setItems([]);
+    }
+  }, [cloud, supabase, user?.id]);
+
+  useEffect(() => {
+    void refreshItems();
+  }, [refreshItems]);
+
   const setStatus = useCallback(
-    (id: string, status: Status, title: string) => {
-      setItems(prev => prev.map(x => (x.id === id ? { ...x, status } : x)));
+    async (id: string, status: Status, title: string) => {
+      if (cloud && supabase && user) {
+        try {
+          await updateComplaintStatusAdmin(supabase, {
+            complaint_id: id,
+            new_status: status,
+            admin_id: user.id,
+            note: 'Status updated from admin queue',
+          });
+          await refreshItems();
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : 'Could not update status');
+          return;
+        }
+      } else {
+        setItems(prev => prev.map(x => (x.id === id ? { ...x, status } : x)));
+      }
       setActionMenu(null);
       play('success');
       triggerFlash(id);
@@ -460,14 +500,31 @@ export function AdminComplaintsPage() {
         duration: 3200,
       });
     },
-    [play, triggerFlash]
+    [cloud, supabase, user, refreshItems, play, triggerFlash]
   );
 
   const bulkSetStatus = useCallback(
-    (status: Status) => {
+    async (status: Status) => {
       if (selected.length === 0) return;
-      const ids = new Set(selected);
-      setItems(prev => prev.map(x => (ids.has(x.id) ? { ...x, status } : x)));
+      if (cloud && supabase && user) {
+        try {
+          for (const id of selected) {
+            await updateComplaintStatusAdmin(supabase, {
+              complaint_id: id,
+              new_status: status,
+              admin_id: user.id,
+              note: 'Bulk status update',
+            });
+          }
+          await refreshItems();
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : 'Bulk update failed');
+          return;
+        }
+      } else {
+        const ids = new Set(selected);
+        setItems(prev => prev.map(x => (ids.has(x.id) ? { ...x, status } : x)));
+      }
       play('success');
       toast.success(`Updated ${selected.length} thought${selected.length !== 1 ? 's' : ''}`, {
         description: `All marked as ${status}.`,
@@ -475,7 +532,7 @@ export function AdminComplaintsPage() {
       selected.forEach(id => triggerFlash(id));
       setSelected([]);
     },
-    [selected, play, triggerFlash]
+    [selected, cloud, supabase, user, refreshItems, play, triggerFlash]
   );
 
   const toggleSelect = (id: string) => {
@@ -555,7 +612,7 @@ export function AdminComplaintsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="min-w-[12rem]">
                           {STATUS_OPTIONS.map(s => (
-                            <DropdownMenuItem key={s} onSelect={() => bulkSetStatus(s)}>
+                            <DropdownMenuItem key={s} onSelect={() => void bulkSetStatus(s)}>
                               Mark {selected.length} as {s}
                             </DropdownMenuItem>
                           ))}

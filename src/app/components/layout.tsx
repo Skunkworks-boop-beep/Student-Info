@@ -3,7 +3,8 @@ import { Link, Outlet, NavLink, Navigate, useNavigate, useLocation } from 'react
 import {
   LayoutDashboard, FileText, PlusCircle, Trophy, Map, Heart,
   LogOut, Menu, X, Sun, Moon, Shield, Sparkles,
-  BarChart3, Users, Workflow, Building2
+  BarChart3, Users, Workflow, Building2,
+  Rss,
 } from 'lucide-react';
 import { useAuth } from './auth-context';
 import { useTheme } from './theme-provider';
@@ -28,12 +29,13 @@ export function Layout() {
 
   const studentLinks = [
     { to: paths.app, icon: LayoutDashboard, label: 'Dashboard' },
+    { to: paths.feed, icon: Rss, label: 'Campus feed' },
     { to: paths.complaints, icon: FileText, label: 'Thoughts' },
     { to: paths.submit, icon: PlusCircle, label: 'New Thought' },
     { to: paths.leaderboard, icon: Trophy, label: 'Leaderboard' },
     { to: paths.map, icon: Map, label: 'Campus Map' },
     { to: paths.assistant, icon: Sparkles, label: 'AI Assistant' },
-    { to: paths.support, icon: Heart, label: 'Dev Support' },
+    { to: paths.support, icon: Heart, label: 'Support' },
   ];
 
   const adminLinks = [
@@ -167,9 +169,9 @@ export function Layout() {
               <SoundToggleButton />
             </div>
             <button
-              onClick={() => {
+              onClick={async () => {
                 play('logout');
-                logout();
+                await logout();
                 navigate(paths.login);
               }}
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-red-400 hover:bg-red-500/10 w-full transition-colors"

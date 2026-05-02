@@ -1,0 +1,7 @@
+# Supabase local / deploy config. See https://supabase.com/docs/guides/cli/config
+
+[api]
+enabled = true
+
+[functions.send-auth-email]
+verify_jwt = false

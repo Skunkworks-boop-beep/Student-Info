@@ -1,9 +1,13 @@
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useMemo, useState, useEffect, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { MapPin, Building2, BookOpen, Coffee, Bus, Shield, Crosshair, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSound } from '../audio/sound-context';
 import { useAuth } from '../components/auth-context';
+import { getSupabaseClient } from '../../lib/supabase';
+import { listComplaints } from '../api/supabase-api';
+import { buildLiveOpenComplaintCells } from '../utils/campus-map-live';
+import type { Complaint } from '../data/mock-data';
 
 export type IssueSeverity = 'low' | 'medium' | 'high';
 
@@ -370,8 +374,50 @@ interface CampusMapPageProps {
 
 export function CampusMapPage({ showHeader = true }: CampusMapPageProps) {
   const { play } = useSound();
-  const { isAdmin } = useAuth();
-  const cellIssues = useMemo(() => buildCellIssueMap(), []);
+  const { isAdmin, backendMode } = useAuth();
+  const supabase = getSupabaseClient();
+  const cloud = backendMode === 'supabase';
+  const [liveComplaints, setLiveComplaints] = useState<Complaint[]>([]);
+  const [liveMapError, setLiveMapError] = useState(false);
+
+  useEffect(() => {
+    if (!cloud || !supabase) {
+      setLiveComplaints([]);
+      setLiveMapError(false);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const all = await listComplaints(supabase, undefined);
+        if (!cancelled) {
+          setLiveComplaints(all);
+          setLiveMapError(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setLiveComplaints([]);
+          setLiveMapError(true);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [cloud, supabase]);
+
+  const cellIssues = useMemo(() => {
+    if (cloud) {
+      if (liveMapError) return new Map<string, CampusIssue[]>();
+      const liveMap = buildLiveOpenComplaintCells(liveComplaints);
+      const out = new Map<string, CampusIssue[]>();
+      for (const [k, issues] of liveMap) {
+        out.set(k, issues as CampusIssue[]);
+      }
+      return out;
+    }
+    return buildCellIssueMap();
+  }, [cloud, liveComplaints, liveMapError]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   /** Viewport coords (clientX/clientY) — tooltip rendered in a portal so fixed positioning is correct. */
   const [hover, setHover] = useState<{
@@ -394,11 +440,21 @@ export function CampusMapPage({ showHeader = true }: CampusMapPageProps) {
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="premium-hero">
           <h1 className="text-3xl" style={{ fontWeight: 700 }}>Campus Intelligence Map</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {isAdmin
-              ? 'Tactical grid: hover any zone for bundled facility signals; click to open SITREP, including clear zones for ops confirmation.'
-              : 'Hover any cell for a readout. Tap a cell that shows a signal count to open details—quiet cells are view-only. Pins and issues are sample data.'}
+            {cloud
+              ? isAdmin
+                ? 'Live tactical grid: each cell aggregates open (non-resolved) thoughts from your Supabase project by a stable location hash. Hover for titles; click a zone for SITREP.'
+                : 'Heat reflects open thoughts from your organization’s live data—hashed into grid cells. Facility pins are orientation only.'
+              : isAdmin
+                ? 'Tactical grid: hover any zone for bundled facility signals; click to open SITREP, including clear zones for ops confirmation.'
+                : 'Hover any cell for a readout. Tap a cell that shows a signal count to open details—quiet cells are view-only. Pins and bundled issues are demo data.'}
           </p>
         </motion.div>
+      )}
+
+      {liveMapError && (
+        <div className="mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
+          Could not load live thoughts for the map. Check your connection and Supabase RLS policies, then refresh.
+        </div>
       )}
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -710,28 +766,32 @@ export function CampusMapPage({ showHeader = true }: CampusMapPageProps) {
               </h3>
             </div>
             {[...BUILDINGS]
-              .sort((a, b) => b.issues.length - a.issues.length)
               .map(b => {
                 const { key } = coordsToCell(b.x, b.y);
-                const tier = heatTier(heatScore(b.issues));
-                return (
-                  <button
-                    key={b.id}
-                    type="button"
-                    onClick={() => {
-                      play('tap');
-                      setSelectedKey(key);
-                    }}
-                    className={`flex w-full items-center gap-3 border-b border-border p-3 text-left transition-colors last:border-0 hover:bg-accent/50 ${
-                      selectedKey === key ? 'bg-secondary/50' : ''
-                    }`}
-                  >
-                    <div className={`h-8 w-8 shrink-0 rounded-md border-2 ${TACTICAL_TIERS[tier].className}`} />
-                    <span className="min-w-0 flex-1 truncate text-sm">{b.name}</span>
-                    <span className="text-xs font-mono text-muted-foreground">{b.issues.length}</span>
-                  </button>
-                );
-              })}
+                const cellList = cellIssues.get(key) ?? [];
+                const count = cloud ? cellList.length : b.issues.length;
+                const tierSource = cloud ? cellList : b.issues;
+                const tier = heatTier(heatScore(tierSource));
+                return { b, key, count, tier };
+              })
+              .sort((a, b) => b.count - a.count)
+              .map(({ b, key, count, tier }) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => {
+                    play('tap');
+                    setSelectedKey(key);
+                  }}
+                  className={`flex w-full items-center gap-3 border-b border-border p-3 text-left transition-colors last:border-0 hover:bg-accent/50 ${
+                    selectedKey === key ? 'bg-secondary/50' : ''
+                  }`}
+                >
+                  <div className={`h-8 w-8 shrink-0 rounded-md border-2 ${TACTICAL_TIERS[tier].className}`} />
+                  <span className="min-w-0 flex-1 truncate text-sm">{b.name}</span>
+                  <span className="text-xs font-mono text-muted-foreground">{count}</span>
+                </button>
+              ))}
           </div>
         </div>
       </div>

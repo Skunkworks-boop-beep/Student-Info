@@ -12,6 +12,8 @@ export const paths = {
   map: `${APP_BASE}/map`,
   support: `${APP_BASE}/support`,
   assistant: `${APP_BASE}/assistant`,
+  feed: `${APP_BASE}/feed`,
+  profile: (username: string) => `${APP_BASE}/profile/${encodeURIComponent(username)}`,
   admin: `${APP_BASE}/admin`,
   adminComplaints: `${APP_BASE}/admin/complaints`,
   adminUsers: `${APP_BASE}/admin/users`,

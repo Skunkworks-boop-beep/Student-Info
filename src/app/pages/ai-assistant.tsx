@@ -53,8 +53,8 @@ export function AIAssistantPage() {
         <div>
           <h1 className="text-2xl sm:text-3xl" style={{ fontWeight: 700 }}>AI Assistant Workspace</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Three-column workspace mock: static thread list, sample conversation, and community tips. Buttons and composer
-            play sounds; they do not call a model or save data.
+            Three-column workspace: illustrative thread list, conversation chrome, and community tips. UI and sounds are
+            local; connect your own model or helpdesk when you are ready to go beyond preset content.
           </p>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">

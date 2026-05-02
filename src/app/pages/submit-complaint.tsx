@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { paths } from '../paths';
 import { Upload, X, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { CATEGORIES, type Category } from '../data/mock-data';
 import { motion } from 'motion/react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { useSound } from '../audio/sound-context';
+import { useAuth } from '../components/auth-context';
+import { getSupabaseClient } from '../../lib/supabase';
+import { createComplaintRow, uploadComplaintMediaFiles } from '../api/supabase-api';
 
 interface AttachmentPreview {
   id: string;
@@ -13,11 +16,15 @@ interface AttachmentPreview {
   type: string;
   size: number;
   previewUrl?: string;
+  file: File;
 }
 
 export function SubmitComplaintPage() {
   const { play } = useSound();
   const navigate = useNavigate();
+  const { user, backendMode, refreshProfile } = useAuth();
+  const supabase = getSupabaseClient();
+  const cloud = backendMode === 'supabase';
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<Category | ''>('');
@@ -28,6 +35,7 @@ export function SubmitComplaintPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [attachments, setAttachments] = useState<AttachmentPreview[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [createdId, setCreatedId] = useState<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -66,6 +74,42 @@ export function SubmitComplaintPage() {
       return;
     }
     setIsSubmitting(true);
+    setCreatedId(null);
+
+    if (cloud && supabase && user) {
+      const normalizedTitle = title.trim().replace(/\s{2,}/g, ' ');
+      const normalizedDescription = description.trim().replace(/\s{2,}/g, ' ');
+      const normalizedLocation = location.trim().replace(/\s{2,}/g, ' ');
+      try {
+        const files = attachments.map(a => a.file);
+        const media_urls =
+          files.length > 0 ? await uploadComplaintMediaFiles(supabase, user.id, files) : [];
+        const id = await createComplaintRow(supabase, {
+          user_id: user.id,
+          title: normalizedTitle,
+          description: normalizedDescription,
+          category: category as Category,
+          priority,
+          location: normalizedLocation,
+          is_anonymous: isAnonymous,
+          media_urls,
+        });
+        setCreatedId(id);
+        await refreshProfile();
+        play('success');
+        setSubmitted(true);
+      } catch (err) {
+        setErrors(prev => ({
+          ...prev,
+          form: err instanceof Error ? err.message : 'Could not submit. Check your connection and Supabase policies.',
+        }));
+        play('error');
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     await new Promise(resolve => setTimeout(resolve, 500));
     play('success');
     setSubmitted(true);
@@ -110,6 +154,7 @@ export function SubmitComplaintPage() {
         type: file.type,
         size: file.size,
         previewUrl,
+        file,
       });
     }
 
@@ -141,10 +186,19 @@ export function SubmitComplaintPage() {
         </div>
         <h1 className="text-xl mb-2" style={{ fontWeight: 700 }}>Thought Shared!</h1>
         <p className="text-muted-foreground mb-2 text-sm">
-          Validation passed and XP is shown for feedback. This build does not persist new thoughts to the feed—use it
-          to demo the form, attachments, and success state.
+          {cloud && createdId
+            ? 'Your thought is live for everyone on this Supabase project. +10 XP was applied by the database.'
+            : 'Validation passed and XP is shown for feedback. In local demo mode new thoughts are not persisted—use Supabase env vars for a live feed.'}
         </p>
         <p className="text-sm text-primary mb-6" style={{ fontWeight: 600 }}>+10 XP earned!</p>
+        {cloud && createdId && (
+          <Link
+            to={paths.complaint(createdId)}
+            className="text-sm text-primary hover:underline block mb-6"
+          >
+            Open your new thread →
+          </Link>
+        )}
         <div className="flex gap-3 justify-center">
           <button onClick={() => navigate(paths.complaints)} className="px-5 py-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors text-sm">
             View Thoughts
@@ -152,6 +206,7 @@ export function SubmitComplaintPage() {
           <button onClick={() => {
             attachments.forEach(a => a.previewUrl && URL.revokeObjectURL(a.previewUrl));
             setSubmitted(false);
+            setCreatedId(null);
             setTitle('');
             setDescription('');
             setCategory('');
@@ -174,6 +229,11 @@ export function SubmitComplaintPage() {
       </p>
 
       <form onSubmit={handleSubmit} className="premium-panel p-4 sm:p-6 space-y-5">
+        {errors.form && (
+          <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm">
+            {errors.form}
+          </div>
+        )}
         {/* Title */}
         <div>
           <label className="text-sm mb-1.5 block">Title</label>

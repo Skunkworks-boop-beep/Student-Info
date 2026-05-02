@@ -1,9 +1,12 @@
+import { useEffect, useState, useCallback } from 'react';
 import { FileText, Clock, Star, TrendingDown, Crosshair } from 'lucide-react';
 import { motion } from 'motion/react';
 import { analyticsData } from '../data/mock-data';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { adminTactical } from '../admin-tactical-ui';
 import { useAuth } from '../components/auth-context';
+import { getSupabaseClient } from '../../lib/supabase';
+import { listComplaints, buildLiveAnalytics } from '../api/supabase-api';
 
 /** Tactical-muted chart fills — same semantics as before (amber / blue / violet / green families), olive-tan keyed */
 const PIE_COLORS = ['#b89a5c', '#6e7f78', '#7d6e7a', '#5f6f4e'];
@@ -21,15 +24,98 @@ const KPI_ICON_STYLES = [
 
 const TREND_TACTICAL = 'text-[#4a5540] dark:text-[#9faa8c]';
 
+function monthOverMonthVolumeTrend(series: { count: number }[]): string {
+  if (series.length < 2) return '—';
+  const prev = series[series.length - 2]!.count;
+  const cur = series[series.length - 1]!.count;
+  if (prev === 0) return cur > 0 ? '+100%' : '0%';
+  const pct = Math.round(((cur - prev) / prev) * 100);
+  return `${pct >= 0 ? '+' : ''}${pct}%`;
+}
+
 export function AdminDashboardPage() {
-  const { campusName } = useAuth();
-  const { totalComplaints, openComplaints, avgResolutionDays, satisfactionScore, complaintsOverTime, byCategory, byStatus } = analyticsData;
+  const { campusName, backendMode } = useAuth();
+  const supabase = getSupabaseClient();
+  const cloud = backendMode === 'supabase';
+
+  const fallback = useCallback(
+    () => ({
+      totalComplaints: analyticsData.totalComplaints,
+      openComplaints: analyticsData.openComplaints,
+      avgResolutionDays: analyticsData.avgResolutionDays,
+      satisfactionScore: analyticsData.satisfactionScore,
+      complaintsOverTime: analyticsData.complaintsOverTime,
+      byCategory: analyticsData.byCategory,
+      byStatus: analyticsData.byStatus,
+    }),
+    []
+  );
+
+  const [live, setLive] = useState(() => fallback());
+  const [analyticsError, setAnalyticsError] = useState(false);
+
+  const refresh = useCallback(async () => {
+    if (!cloud || !supabase) {
+      setLive(fallback());
+      setAnalyticsError(false);
+      return;
+    }
+    try {
+      const all = await listComplaints(supabase, undefined);
+      setLive(buildLiveAnalytics(all));
+      setAnalyticsError(false);
+    } catch {
+      setLive(buildLiveAnalytics([]));
+      setAnalyticsError(true);
+    }
+  }, [cloud, supabase, fallback]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const {
+    totalComplaints,
+    openComplaints,
+    avgResolutionDays,
+    satisfactionScore,
+    complaintsOverTime,
+    byCategory,
+    byStatus,
+  } = live;
+
+  const openShare =
+    totalComplaints > 0 ? `${Math.round((openComplaints / totalComplaints) * 100)}%` : '—';
 
   const kpis = [
-    { label: 'Total thoughts', value: totalComplaints, icon: FileText, iconStyle: KPI_ICON_STYLES[0], trend: '+12%' },
-    { label: 'Open', value: openComplaints, icon: Clock, iconStyle: KPI_ICON_STYLES[1], trend: '-5%' },
-    { label: 'Avg Resolution', value: `${avgResolutionDays}d`, icon: TrendingDown, iconStyle: KPI_ICON_STYLES[2], trend: '-0.8d' },
-    { label: 'Satisfaction', value: `${satisfactionScore}/5`, icon: Star, iconStyle: KPI_ICON_STYLES[3], trend: '+0.3' },
+    {
+      label: 'Total thoughts',
+      value: totalComplaints,
+      icon: FileText,
+      iconStyle: KPI_ICON_STYLES[0],
+      trend: cloud ? monthOverMonthVolumeTrend(complaintsOverTime) : '+12%',
+    },
+    {
+      label: 'Open',
+      value: openComplaints,
+      icon: Clock,
+      iconStyle: KPI_ICON_STYLES[1],
+      trend: cloud ? `${openShare} of total` : '-5%',
+    },
+    {
+      label: 'Avg Resolution',
+      value: `${avgResolutionDays}d`,
+      icon: TrendingDown,
+      iconStyle: KPI_ICON_STYLES[2],
+      trend: cloud ? 'Rolling avg' : '-0.8d',
+    },
+    {
+      label: 'Satisfaction',
+      value: satisfactionScore > 0 ? `${satisfactionScore}/5` : 'N/A',
+      icon: Star,
+      iconStyle: KPI_ICON_STYLES[3],
+      trend: cloud ? (satisfactionScore > 0 ? 'From ratings' : 'No ratings') : '+0.3',
+    },
   ];
 
   return (
@@ -59,8 +145,15 @@ export function AdminDashboardPage() {
             </span>
           </div>
           <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
-            Charts and KPIs use the built-in analytics sample (fixed totals and time series)—a reference dashboard for
-            how thought volume, status mix, and categories could be summarized for staff.
+            {analyticsError && cloud ? (
+              <span className="text-red-600 dark:text-red-400">
+                Could not load live analytics; charts show zeros until Supabase is reachable.
+              </span>
+            ) : cloud ? (
+              'Live aggregates from your Supabase thoughts table. KPI subtitles use current data (volume MoM where history exists, share open vs total, satisfaction when ratings exist).'
+            ) : (
+              'Charts and KPIs use the built-in analytics sample—useful for layout review before connecting Supabase.'
+            )}
           </p>
         </div>
       </motion.div>

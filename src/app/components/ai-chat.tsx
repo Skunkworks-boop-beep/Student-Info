@@ -11,19 +11,19 @@ interface Message {
 
 const FAQ_RESPONSES: Record<string, string> = {
   'how do i submit':
-    'Use **New Thought** in the sidebar. Add title, description, category, priority, optional location, anonymity, and attachments (images/video per the on-screen limits). Submit runs validation and a success screen; the list feed still shows the bundled sample thoughts.',
+    'Use **New Thought** in the sidebar. Add title, description, category, priority, optional location, anonymity, and attachments. With Supabase configured, submissions persist and show in the thoughts feed.',
   track:
-    'Open **Dashboard** for your counts and recent threads, or **Thoughts** for the full feed. Each thread has a status stepper: Pending → Reviewed → Processing → Resolved (from the static record on the detail page).',
+    'Open **Dashboard** for your counts and recent threads, or **Thoughts** for the full feed. Each thread has a status stepper: Pending → Reviewed → Processing → Resolved.',
   anonymous:
-    'On New Thought, turn on **Submit anonymously** so other students see a generic name; the sample data model still ties a record to an id for admins in a real backend.',
+    'On New Thought, turn on **Submit anonymously** so other students see a generic label; your account still links to the record for authenticated operations and admins.',
   xp:
-    'UNI XP is the gamification layer: the UI shows earning +10 on a successful submit flow, +5 for comments in the product story, leaderboard ranks from bundled data, and Dev Support tokens (+8) as a local toast.',
+    'UNI XP is the gamification layer: thoughts, comments, and engagement update scores in your Supabase project when connected; the leaderboard reads live profiles.',
   where:
-    'Use **Campus Map** for the tactical grid and pins. Names match the sample campus; your school would replace geometry and issue data.',
+    'Use **Campus Map** for the tactical grid. With Supabase, heat is driven by open thoughts on your project; offline demo mode uses bundled examples.',
   office:
-    'Sample copy in this assistant points to Admin Building rooms for demo wayfinding—not tied to your real campus.',
+    'Sample copy in this assistant points to Admin Building rooms for demo wayfinding—replace with your campus contacts for production.',
   help:
-    'I match keywords to short answers about thoughts, the map, XP, and navigation. I am not a live LLM—use **AI Assistant** in the nav for the richer (still static) workspace UI.',
+    'I match keywords to short answers about thoughts, the map, XP, and navigation. I am not a live LLM—use **AI Assistant** in the nav for the richer in-app workspace UI.',
 };
 
 function getAIResponse(input: string): string {

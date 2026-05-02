@@ -1,5 +1,6 @@
 import { Link } from 'react-router';
 import { paths } from '../paths';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Search,
   Bell,
@@ -22,6 +23,9 @@ import { StatusBadge, PriorityBadge } from '../components/status-badge';
 import { useAuth } from '../components/auth-context';
 import { motion } from 'motion/react';
 import { formatDistanceToNow } from 'date-fns';
+import { getSupabaseClient } from '../../lib/supabase';
+import { fetchLeaderboardProfiles, listComplaints } from '../api/supabase-api';
+import type { Complaint, User } from '../data/mock-data';
 
 /** Shared tactical chrome — aligns with campus map / landing framework panels */
 const tactical = {
@@ -35,13 +39,44 @@ const tactical = {
 };
 
 export function DashboardPage() {
-  const { user, campusName, anonymousMode, setAnonymousMode } = useAuth();
-  const myComplaints = complaints.filter(c => c.user_id === user?.id);
+  const { user, campusName, anonymousMode, setAnonymousMode, backendMode } = useAuth();
+  const supabase = getSupabaseClient();
+  const [thoughtList, setThoughtList] = useState<Complaint[]>([]);
+  const [leaders, setLeaders] = useState<User[]>([]);
+  const [dataError, setDataError] = useState('');
+
+  const refreshData = useCallback(async () => {
+    if (backendMode !== 'supabase' || !supabase) {
+      setThoughtList(complaints);
+      setLeaders(leaderboard);
+      setDataError('');
+      return;
+    }
+    try {
+      const [list, lb] = await Promise.all([
+        listComplaints(supabase, user?.id),
+        fetchLeaderboardProfiles(supabase, 50),
+      ]);
+      setThoughtList(list);
+      setLeaders(lb);
+      setDataError('');
+    } catch (err) {
+      setThoughtList([]);
+      setLeaders([]);
+      setDataError(err instanceof Error ? err.message : 'Could not load live data.');
+    }
+  }, [backendMode, supabase, user?.id]);
+
+  useEffect(() => {
+    void refreshData();
+  }, [refreshData]);
+
+  const myComplaints = thoughtList.filter(c => c.user_id === user?.id);
   const pending = myComplaints.filter(c => c.status === 'Pending').length;
   const resolved = myComplaints.filter(c => c.status === 'Resolved').length;
   const processing = myComplaints.filter(c => c.status === 'Processing').length;
-  const activeStudents = leaderboard.slice(0, 3);
-  const liveFeed = [...complaints]
+  const activeStudents = leaders.slice(0, 3);
+  const liveFeed = [...thoughtList]
     .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
     .slice(0, 5);
 
@@ -68,6 +103,11 @@ export function DashboardPage() {
 
   return (
     <div className="premium-page">
+      {dataError && backendMode === 'supabase' && (
+        <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+          {dataError}
+        </div>
+      )}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -193,7 +233,11 @@ export function DashboardPage() {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-xs text-muted-foreground whitespace-nowrap">Anonymous</span>
-                      <Switch checked={anonymousMode} onCheckedChange={setAnonymousMode} aria-label="Anonymous display mode" />
+                      <Switch
+                        checked={anonymousMode}
+                        onCheckedChange={v => void setAnonymousMode(v)}
+                        aria-label="Anonymous display mode"
+                      />
                     </div>
                   </div>
                 </div>
