@@ -2,16 +2,26 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router';
 import { ArrowLeft, ArrowUp, MapPin, Send, MessageSquare } from 'lucide-react';
 import { paths } from '../paths';
-import { complaints } from '../data/mock-data';
+import { complaints, type Comment } from '../data/mock-data';
 import { firstNameOnly } from '../utils/display-name';
 import { StatusBadge, PriorityBadge } from '../components/status-badge';
 import { StatusStepper } from '../components/status-stepper';
 import { formatDistanceToNow, format } from 'date-fns';
+import { motion, AnimatePresence } from 'motion/react';
+import { useAuth } from '../components/auth-context';
+import { useSound } from '../audio/sound-context';
 
 export function ComplaintDetailPage() {
   const { id } = useParams();
+  const { user } = useAuth();
+  const { play } = useSound();
   const complaint = complaints.find(c => c.id === id);
+
   const [newComment, setNewComment] = useState('');
+  const [localComments, setLocalComments] = useState<Comment[]>(complaint?.comments ?? []);
+  const [upvotes, setUpvotes] = useState(complaint?.upvotes ?? 0);
+  const [upvoted, setUpvoted] = useState(complaint?.upvoted_by_me ?? false);
+  const [submitting, setSubmitting] = useState(false);
 
   if (!complaint) {
     return (
@@ -22,18 +32,45 @@ export function ComplaintDetailPage() {
     );
   }
 
+  const handleUpvote = () => {
+    play('tap');
+    if (upvoted) {
+      setUpvoted(false);
+      setUpvotes(v => v - 1);
+    } else {
+      setUpvoted(true);
+      setUpvotes(v => v + 1);
+    }
+  };
+
+  const handleSubmitComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const text = newComment.trim();
+    if (!text || submitting) return;
+    setSubmitting(true);
+    await new Promise(r => setTimeout(r, 400));
+    const comment: Comment = {
+      id: `local-${Date.now()}`,
+      user_id: user?.id ?? 'demo',
+      user_name: user?.name ?? 'You',
+      text,
+      parent_id: null,
+      created_at: new Date().toISOString(),
+    };
+    setLocalComments(prev => [...prev, comment]);
+    setNewComment('');
+    setSubmitting(false);
+    play('success');
+  };
+
   return (
     <div className="premium-page max-w-5xl">
-      {/* Back */}
       <Link to={paths.complaints} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
         <ArrowLeft className="w-4 h-4" /> Back to thoughts
       </Link>
-      <p className="text-xs text-muted-foreground mt-2 mb-4">
-        Thread content, status, and comments load from the static catalog—admin queue edits are not merged here yet.
-      </p>
 
       {/* Header card */}
-      <div className="premium-panel p-6">
+      <div className="premium-panel p-6 mt-4">
         <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
           <div className="flex-1">
             <h1 className="text-xl mb-2" style={{ fontWeight: 700 }}>{complaint.title}</h1>
@@ -46,10 +83,16 @@ export function ComplaintDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border ${complaint.upvoted_by_me ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:bg-accent'} transition-colors`}>
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={handleUpvote}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border transition-colors ${
+                upvoted ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:bg-accent'
+              }`}
+            >
               <ArrowUp className="w-4 h-4" />
-              <span className="text-sm" style={{ fontWeight: 600 }}>{complaint.upvotes}</span>
-            </button>
+              <span className="text-sm" style={{ fontWeight: 600 }}>{upvotes}</span>
+            </motion.button>
           </div>
         </div>
 
@@ -91,32 +134,40 @@ export function ComplaintDetailPage() {
       <div className="premium-panel">
         <div className="flex items-center gap-2 p-5 border-b border-border">
           <MessageSquare className="w-4 h-4" />
-          <h2 className="text-sm" style={{ fontWeight: 600 }}>Comments ({complaint.comments.length})</h2>
+          <h2 className="text-sm" style={{ fontWeight: 600 }}>Comments ({localComments.length})</h2>
         </div>
 
         <div className="divide-y divide-border">
-          {complaint.comments.map(c => (
-            <div key={c.id} className={`p-5 ${c.parent_id ? 'ml-8 border-l-2 border-primary/20' : ''}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs" style={{ fontWeight: 600 }}>
-                  {firstNameOnly(c.user_name).charAt(0)}
+          <AnimatePresence initial={false}>
+            {localComments.map(c => (
+              <motion.div
+                key={c.id}
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className={`p-5 ${c.parent_id ? 'ml-8 border-l-2 border-primary/20' : ''}`}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs" style={{ fontWeight: 600 }}>
+                    {firstNameOnly(c.user_name).charAt(0)}
+                  </div>
+                  <span className="text-sm" style={{ fontWeight: 500 }}>{firstNameOnly(c.user_name)}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}
+                  </span>
                 </div>
-                <span className="text-sm" style={{ fontWeight: 500 }}>{firstNameOnly(c.user_name)}</span>
-                <span className="text-xs text-muted-foreground">
-                  {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}
-                </span>
-              </div>
-              <p className="text-sm text-foreground/90 leading-relaxed">{c.text}</p>
-            </div>
-          ))}
+                <p className="text-sm text-foreground/90 leading-relaxed">{c.text}</p>
+              </motion.div>
+            ))}
+          </AnimatePresence>
 
-          {complaint.comments.length === 0 && (
+          {localComments.length === 0 && (
             <div className="p-8 text-center text-sm text-muted-foreground">No comments yet. Be the first!</div>
           )}
         </div>
 
         {/* Add comment */}
-        <div className="p-4 border-t border-border">
+        <form onSubmit={handleSubmitComment} className="p-4 border-t border-border">
           <div className="flex gap-2">
             <input
               value={newComment}
@@ -124,14 +175,16 @@ export function ComplaintDetailPage() {
               placeholder="Write a comment..."
               className="flex-1 px-4 py-2.5 rounded-xl bg-input-background border border-border focus:ring-2 focus:ring-primary/40 outline-none text-sm"
             />
-            <button
-              disabled={!newComment.trim()}
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              type="submit"
+              disabled={!newComment.trim() || submitting}
               className="p-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               <Send className="w-4 h-4" />
-            </button>
+            </motion.button>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );

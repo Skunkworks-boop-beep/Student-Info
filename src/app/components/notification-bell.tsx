@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Bell, X, MessageSquare, RefreshCw, AlertCircle, CheckCircle2, AtSign } from 'lucide-react';
-import { notifications } from '../data/mock-data';
+import { notifications, type Notification } from '../data/mock-data';
 import { formatDistanceToNow } from 'date-fns';
 import { useSound } from '../audio/sound-context';
+import { motion, AnimatePresence } from 'motion/react';
 
 const TYPE_ICON: Record<string, React.ReactNode> = {
   status_change: <RefreshCw className="w-4 h-4 text-blue-500" />,
@@ -12,15 +13,45 @@ const TYPE_ICON: Record<string, React.ReactNode> = {
   system_alert: <AlertCircle className="w-4 h-4 text-amber-500" />,
 };
 
+const LIVE_NOTIFICATIONS: Omit<Notification, 'id' | 'created_at'>[] = [
+  { type: 'status_change', message: 'Your "Wi-Fi in Block B" thought moved to Processing.', is_read: false },
+  { type: 'complaint_resolved', message: 'Your "Elevator maintenance" thought has been resolved! 🎉', is_read: false },
+  { type: 'new_comment', message: 'Aseel commented on your "Library hours" thought.', is_read: false },
+  { type: 'mention', message: 'Erik mentioned you in a discussion about lab scheduling.', is_read: false },
+];
+
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState(notifications);
-  const unread = items.filter(n => !n.is_read).length;
+  const [items, setItems] = useState<Notification[]>(notifications);
   const { play } = useSound();
+  const liveIndex = useRef(0);
+
+  const unread = items.filter(n => !n.is_read).length;
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (liveIndex.current >= LIVE_NOTIFICATIONS.length) return;
+      const next = LIVE_NOTIFICATIONS[liveIndex.current];
+      liveIndex.current += 1;
+      const newItem: Notification = {
+        ...next,
+        id: `live-${Date.now()}`,
+        created_at: new Date().toISOString(),
+      };
+      setItems(prev => [newItem, ...prev]);
+      play('notify');
+    }, 18000);
+    return () => clearInterval(interval);
+  }, [play]);
 
   const markAllRead = () => {
     play('tap');
-    setItems(items.map(n => ({ ...n, is_read: true })));
+    setItems(prev => prev.map(n => ({ ...n, is_read: true })));
+  };
+
+  const dismiss = (id: string) => {
+    play('tap');
+    setItems(prev => prev.filter(n => n.id !== id));
   };
 
   return (
@@ -37,11 +68,18 @@ export function NotificationBell() {
         aria-label="Notifications"
       >
         <Bell className="w-5 h-5" />
-        {unread > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-primary text-primary-foreground text-[10px] rounded-full flex items-center justify-center">
-            {unread}
-          </span>
-        )}
+        <AnimatePresence>
+          {unread > 0 && (
+            <motion.span
+              key={unread}
+              initial={{ scale: 0.5 }}
+              animate={{ scale: 1 }}
+              className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-primary text-primary-foreground text-[10px] rounded-full flex items-center justify-center"
+            >
+              {unread > 9 ? '9+' : unread}
+            </motion.span>
+          )}
+        </AnimatePresence>
       </button>
 
       {open && (
@@ -55,7 +93,7 @@ export function NotificationBell() {
           />
           <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-card/95 backdrop-blur-md border border-border/80 rounded-2xl shadow-[0_24px_60px_rgba(15,23,42,0.16)] z-50 overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-border">
-              <h3 className="text-sm">Notifications</h3>
+              <h3 className="text-sm" style={{ fontWeight: 600 }}>Notifications</h3>
               <div className="flex items-center gap-2">
                 {unread > 0 && (
                   <button onClick={markAllRead} className="text-xs text-primary hover:underline">
@@ -75,23 +113,48 @@ export function NotificationBell() {
               </div>
             </div>
             <div className="max-h-80 overflow-y-auto">
-              {items.map(n => (
-                <div
-                  key={n.id}
-                  className={`flex gap-3 p-4 border-b border-border hover:bg-accent/40 transition-colors ${
-                    !n.is_read ? 'bg-primary/5' : ''
-                  }`}
-                >
-                  <div className="mt-0.5">{TYPE_ICON[n.type]}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm leading-snug">{n.message}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
-                    </p>
-                  </div>
-                  {!n.is_read && <div className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />}
-                </div>
-              ))}
+              <AnimatePresence initial={false}>
+                {items.length === 0 && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="p-6 text-center text-sm text-muted-foreground"
+                  >
+                    All caught up!
+                  </motion.div>
+                )}
+                {items.map(n => (
+                  <motion.div
+                    key={n.id}
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className={`flex gap-3 p-4 border-b border-border hover:bg-accent/40 transition-colors ${
+                      !n.is_read ? 'bg-primary/5' : ''
+                    }`}
+                  >
+                    <div className="mt-0.5 shrink-0">{TYPE_ICON[n.type]}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm leading-snug">{n.message}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-1.5 shrink-0">
+                      {!n.is_read && <div className="w-2 h-2 rounded-full bg-primary mt-2" />}
+                      <button
+                        type="button"
+                        onClick={() => dismiss(n.id)}
+                        className="p-0.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                        aria-label="Dismiss"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </div>
           </div>
         </>

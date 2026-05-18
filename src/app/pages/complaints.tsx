@@ -25,6 +25,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { motion, AnimatePresence } from 'motion/react';
 import { firstNameOnly } from '../utils/display-name';
 import { StatusStepper } from '../components/status-stepper';
+import { useAuth } from '../components/auth-context';
+import { useSound } from '../audio/sound-context';
 
 /** Only some thoughts include media — keeps the feed varied. */
 const THOUGHT_MEDIA: Partial<Record<string, string[]>> = {
@@ -166,28 +168,68 @@ function ThoughtCard({
   c: Complaint;
   onImageClick: (src: string, alt: string) => void;
 }) {
+  const { user } = useAuth();
+  const { play } = useSound();
   const [expanded, setExpanded] = useState(false);
   const [newComment, setNewComment] = useState('');
+  const [localComments, setLocalComments] = useState(c.comments);
+  const [upvotes, setUpvotes] = useState(c.upvotes);
+  const [upvoted, setUpvoted] = useState(c.upvoted_by_me);
+  const [postingComment, setPostingComment] = useState(false);
   const media = THOUGHT_MEDIA[c.id];
+
+  const handleUpvote = () => {
+    play('tap');
+    if (upvoted) {
+      setUpvoted(false);
+      setUpvotes(v => v - 1);
+    } else {
+      setUpvoted(true);
+      setUpvotes(v => v + 1);
+    }
+  };
+
+  const handlePostComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const text = newComment.trim();
+    if (!text || postingComment) return;
+    setPostingComment(true);
+    await new Promise(r => setTimeout(r, 350));
+    setLocalComments(prev => [
+      ...prev,
+      {
+        id: `local-${Date.now()}`,
+        user_id: user?.id ?? 'demo',
+        user_name: user?.name ?? 'You',
+        text,
+        parent_id: null,
+        created_at: new Date().toISOString(),
+      },
+    ]);
+    setNewComment('');
+    setPostingComment(false);
+    play('success');
+  };
 
   return (
     <article className="premium-panel premium-hover-lift border-border/80 hover:border-primary/25 transition-colors overflow-hidden">
       <div className="p-4 sm:p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
           <div className="flex gap-3 flex-1 min-w-0">
-            <button
+            <motion.button
+              whileTap={{ scale: 0.85 }}
               type="button"
-              onClick={e => e.preventDefault()}
-              className={`flex flex-col items-center gap-0 shrink-0 w-8 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:text-primary ${
-                c.upvoted_by_me ? 'text-primary' : ''
+              onClick={handleUpvote}
+              className={`flex flex-col items-center gap-0 shrink-0 w-8 transition-colors focus-visible:outline-none focus-visible:text-primary ${
+                upvoted ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
               }`}
-              aria-label={`${c.upvotes} upvotes`}
+              aria-label={`${upvotes} upvotes`}
             >
               <ArrowUp className="w-4 h-4 shrink-0" />
               <span className="text-xs tabular-nums leading-none" style={{ fontWeight: 600 }}>
-                {c.upvotes}
+                {upvotes}
               </span>
-            </button>
+            </motion.button>
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2 mb-2">
@@ -246,12 +288,12 @@ function ThoughtCard({
                 <span>{c.category}</span>
                 <span className="text-border">·</span>
                 <span className="truncate">{c.location}</span>
-                {c.comments.length > 0 && (
+                {localComments.length > 0 && (
                   <>
                     <span className="text-border">·</span>
                     <span className="inline-flex items-center gap-1">
                       <MessageSquare className="w-3 h-3" />
-                      {c.comments.length}
+                      {localComments.length}
                     </span>
                   </>
                 )}
@@ -320,54 +362,60 @@ function ThoughtCard({
                   <div className="flex items-center gap-2 px-4 py-3 border-b border-border/80 bg-muted/20">
                     <MessageSquare className="w-4 h-4" />
                     <h2 className="text-sm" style={{ fontWeight: 600 }}>
-                      Comments ({c.comments.length})
+                      Comments ({localComments.length})
                     </h2>
                   </div>
                   <div className="divide-y divide-border/60">
-                    {c.comments.map(cm => (
-                      <div
-                        key={cm.id}
-                        className={`px-4 py-3 ${cm.parent_id ? 'ml-6 border-l-2 border-primary/20' : ''}`}
-                      >
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <div
-                            className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs"
-                            style={{ fontWeight: 600 }}
-                          >
-                            {firstNameOnly(cm.user_name).charAt(0)}
+                    <AnimatePresence initial={false}>
+                      {localComments.map(cm => (
+                        <motion.div
+                          key={cm.id}
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.18 }}
+                          className={`px-4 py-3 ${cm.parent_id ? 'ml-6 border-l-2 border-primary/20' : ''}`}
+                        >
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <div
+                              className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs"
+                              style={{ fontWeight: 600 }}
+                            >
+                              {firstNameOnly(cm.user_name).charAt(0)}
+                            </div>
+                            <span className="text-sm" style={{ fontWeight: 500 }}>
+                              {firstNameOnly(cm.user_name)}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {formatDistanceToNow(new Date(cm.created_at), { addSuffix: true })}
+                            </span>
                           </div>
-                          <span className="text-sm" style={{ fontWeight: 500 }}>
-                            {firstNameOnly(cm.user_name)}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(cm.created_at), { addSuffix: true })}
-                          </span>
-                        </div>
-                        <p className="text-sm text-foreground/90 leading-relaxed">{cm.text}</p>
-                      </div>
-                    ))}
-                    {c.comments.length === 0 && (
+                          <p className="text-sm text-foreground/90 leading-relaxed">{cm.text}</p>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                    {localComments.length === 0 && (
                       <div className="px-4 py-6 text-center text-sm text-muted-foreground">
                         No comments yet. Be the first!
                       </div>
                     )}
                   </div>
-                  <div className="p-3 border-t border-border/80 flex gap-2">
+                  <form onSubmit={handlePostComment} className="p-3 border-t border-border/80 flex gap-2">
                     <input
                       value={newComment}
                       onChange={e => setNewComment(e.target.value)}
                       placeholder="Write a comment..."
                       className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-input-background border border-border focus:ring-2 focus:ring-primary/40 outline-none text-sm"
                     />
-                    <button
-                      type="button"
-                      disabled={!newComment.trim()}
+                    <motion.button
+                      whileTap={{ scale: 0.9 }}
+                      type="submit"
+                      disabled={!newComment.trim() || postingComment}
                       className="p-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors shrink-0"
                       aria-label="Send comment"
                     >
                       <Send className="w-4 h-4" />
-                    </button>
-                  </div>
+                    </motion.button>
+                  </form>
                 </div>
 
                 <p className="text-xs text-muted-foreground">

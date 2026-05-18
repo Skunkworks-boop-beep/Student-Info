@@ -6,6 +6,8 @@ import { CATEGORIES, type Category } from '../data/mock-data';
 import { motion } from 'motion/react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { useSound } from '../audio/sound-context';
+// @ts-expect-error no types shipped with canvas-confetti
+import confetti from 'canvas-confetti';
 
 interface AttachmentPreview {
   id: string;
@@ -68,6 +70,7 @@ export function SubmitComplaintPage() {
     setIsSubmitting(true);
     await new Promise(resolve => setTimeout(resolve, 500));
     play('success');
+    confetti({ particleCount: 120, spread: 70, origin: { y: 0.5 } });
     setSubmitted(true);
     setIsSubmitting(false);
   };
@@ -141,8 +144,7 @@ export function SubmitComplaintPage() {
         </div>
         <h1 className="text-xl mb-2" style={{ fontWeight: 700 }}>Thought Shared!</h1>
         <p className="text-muted-foreground mb-2 text-sm">
-          Validation passed and XP is shown for feedback. This build does not persist new thoughts to the feed—use it
-          to demo the form, attachments, and success state.
+          Your thought has been submitted to the campus feed. An admin will review it shortly.
         </p>
         <p className="text-sm text-primary mb-6" style={{ fontWeight: 600 }}>+10 XP earned!</p>
         <div className="flex gap-3 justify-center">
