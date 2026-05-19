@@ -550,42 +550,14 @@ export async function updateComplaintStatusAdmin(
     note: string;
   }
 ): Promise<void> {
-  const { data: current, error: gErr } = await supabase
-    .from('complaints')
-    .select('status, user_id')
-    .eq('id', params.complaint_id)
-    .single();
-  if (gErr) throw gErr;
-  const oldStatus = current?.status as Status;
-  const submitterId = current?.user_id as string;
-
-  if (oldStatus === params.new_status) {
-    return;
-  }
-
-  const { error: uErr } = await supabase
-    .from('complaints')
-    .update({ status: params.new_status })
-    .eq('id', params.complaint_id);
-  if (uErr) throw uErr;
-
-  const { error: lErr } = await supabase.from('complaint_status_log').insert({
-    complaint_id: params.complaint_id,
-    old_status: oldStatus,
-    new_status: params.new_status,
-    changed_by: params.admin_id,
-    note: params.note,
+  // Single atomic RPC: status update + status log + notification in one transaction
+  const { error } = await supabase.rpc('admin_update_complaint_status', {
+    p_complaint_id: params.complaint_id,
+    p_new_status: params.new_status,
+    p_admin_id: params.admin_id,
+    p_note: params.note,
   });
-  if (lErr) throw lErr;
-
-  const { error: nErr } = await supabase.from('notifications').insert({
-    user_id: submitterId,
-    type: 'status_change',
-    message: `Your thought was updated: ${oldStatus} → ${params.new_status}`,
-    complaint_id: params.complaint_id,
-    is_read: false,
-  });
-  if (nErr) throw nErr;
+  if (error) throw error;
 }
 
 export async function listProfilesRoster(supabase: SupabaseClient, limit = 300): Promise<User[]> {
