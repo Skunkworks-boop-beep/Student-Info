@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
 import { paths } from '../paths';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Search,
   Bell,
@@ -15,19 +15,19 @@ import {
   CircleDot,
   Crosshair,
   Radio,
+  RefreshCw,
 } from 'lucide-react';
 import { complaints, leaderboard } from '../data/mock-data';
 import { firstNameOnly, userPublicLabel } from '../utils/display-name';
 import { Switch } from '../components/ui/switch';
 import { StatusBadge, PriorityBadge } from '../components/status-badge';
 import { useAuth } from '../components/auth-context';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { formatDistanceToNow } from 'date-fns';
 import { getSupabaseClient } from '../../lib/supabase';
 import { fetchLeaderboardProfiles, listComplaints } from '../api/supabase-api';
 import type { Complaint, User } from '../data/mock-data';
 
-/** Shared tactical chrome — aligns with campus map / landing framework panels */
 const tactical = {
   border: 'border-2 border-[#6f7a5e]/45 dark:border-[#4a5c46]/70',
   borderSoft: 'border border-[#6f7a5e]/35 dark:border-[#3d4a38]/55',
@@ -38,18 +38,73 @@ const tactical = {
   panelInner: 'bg-card/80 dark:bg-card/60 backdrop-blur-[2px]',
 };
 
+function useCountUp(target: number, duration = 850) {
+  const [display, setDisplay] = useState(0);
+  const prevRef = useRef(0);
+  const rafRef = useRef<number>(0);
+  useEffect(() => {
+    cancelAnimationFrame(rafRef.current);
+    const from = prevRef.current;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min((now - start) / duration, 1);
+      const eased = 1 - (1 - t) ** 3;
+      setDisplay(Math.round(from + (target - from) * eased));
+      if (t < 1) rafRef.current = requestAnimationFrame(tick);
+      else prevRef.current = target;
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [target, duration]);
+  return display;
+}
+
+function StatMini({ label, value, suffix = '', delay = 0 }: { label: string; value: number; suffix?: string; delay?: number }) {
+  const animated = useCountUp(value);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, ease: 'easeOut' }}
+    >
+      <p className="text-[11px] font-mono text-muted-foreground">{label}</p>
+      <p className="text-lg sm:text-xl mt-0.5 tabular-nums" style={{ fontWeight: 700 }}>
+        {animated}{suffix}
+      </p>
+    </motion.div>
+  );
+}
+
+function StatCard({ label, value, className, delay = 0 }: { label: string; value: number; className: string; delay?: number }) {
+  const animated = useCountUp(value);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, ease: 'easeOut' }}
+      className={`rounded-xl px-4 py-3 ${className}`}
+    >
+      <p className="text-[10px] font-mono uppercase tracking-wider opacity-80">{label}</p>
+      <p className="text-2xl mt-1 tabular-nums" style={{ fontWeight: 700 }}>{animated}</p>
+    </motion.div>
+  );
+}
+
 export function DashboardPage() {
   const { user, campusName, anonymousMode, setAnonymousMode, backendMode } = useAuth();
   const supabase = getSupabaseClient();
   const [thoughtList, setThoughtList] = useState<Complaint[]>([]);
   const [leaders, setLeaders] = useState<User[]>([]);
   const [dataError, setDataError] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const refreshData = useCallback(async () => {
+    setIsRefreshing(true);
     if (backendMode !== 'supabase' || !supabase) {
       setThoughtList(complaints);
       setLeaders(leaderboard);
       setDataError('');
+      setIsRefreshing(false);
       return;
     }
     try {
@@ -64,6 +119,8 @@ export function DashboardPage() {
       setThoughtList([]);
       setLeaders([]);
       setDataError(err instanceof Error ? err.message : 'Could not load live data.');
+    } finally {
+      setIsRefreshing(false);
     }
   }, [backendMode, supabase, user?.id]);
 
@@ -128,13 +185,21 @@ export function DashboardPage() {
                   <h1 className="text-2xl sm:text-4xl leading-none truncate" style={{ fontWeight: 800 }}>
                     My Activity
                   </h1>
-                  <span
-                    className={`text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded-md border ${tactical.borderSoft} text-muted-foreground`}
-                  >
+                  <span className={`text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded-md border ${tactical.borderSoft} text-muted-foreground`}>
                     Window · Month
                   </span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  <motion.button
+                    type="button"
+                    whileTap={{ scale: 0.88 }}
+                    onClick={() => void refreshData()}
+                    disabled={isRefreshing}
+                    className={`p-2 rounded-xl border ${tactical.borderSoft} hover:bg-accent/80 transition-colors disabled:opacity-50`}
+                    aria-label="Refresh data"
+                  >
+                    <RefreshCw className={`w-4 h-4 text-muted-foreground transition-transform ${isRefreshing ? 'animate-spin' : ''}`} />
+                  </motion.button>
                   <button
                     type="button"
                     className={`p-2 rounded-xl border ${tactical.borderSoft} hover:bg-accent/80 transition-colors`}
@@ -156,12 +221,14 @@ export function DashboardPage() {
                 <div className={`lg:col-span-2 rounded-xl ${tactical.borderSoft} ${tactical.panelInner} p-3 sm:p-4`}>
                   <p className={`${tactical.label} mb-3`}>Field profile</p>
                   <div className="flex items-start sm:items-center gap-3 sm:gap-4">
-                    <div
-                      className={`w-14 h-14 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center text-xl sm:text-2xl shrink-0 border-2 border-[#6f7a5e]/40 dark:border-[#4a5c46]/60 bg-[#9faa8c]/25 dark:bg-[#2a3528]/50`}
+                    <motion.div
+                      whileHover={{ scale: 1.04 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                      className={`w-14 h-14 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center text-xl sm:text-2xl shrink-0 border-2 border-[#6f7a5e]/40 dark:border-[#4a5c46]/60 bg-[#9faa8c]/25 dark:bg-[#2a3528]/50 cursor-default`}
                       style={{ fontWeight: 700 }}
                     >
                       {userPublicLabel(user, anonymousMode).charAt(0).toUpperCase()}
-                    </div>
+                    </motion.div>
                     <div className="min-w-0">
                       <p className="text-lg sm:text-xl truncate" style={{ fontWeight: 700 }}>
                         {userPublicLabel(user, anonymousMode)}
@@ -194,24 +261,9 @@ export function DashboardPage() {
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-4 pt-4 border-t border-[#6f7a5e]/20 dark:border-[#4a5c46]/30">
-                    <div>
-                      <p className="text-[11px] font-mono text-muted-foreground">Thoughts</p>
-                      <p className="text-lg sm:text-xl mt-0.5" style={{ fontWeight: 700 }}>
-                        {myComplaints.length}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-mono text-muted-foreground">UNI XP</p>
-                      <p className="text-lg sm:text-xl mt-0.5" style={{ fontWeight: 700 }}>
-                        {user?.uni_xp || 0}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-mono text-muted-foreground">Streak</p>
-                      <p className="text-lg sm:text-xl mt-0.5" style={{ fontWeight: 700 }}>
-                        {user?.streak || 0}d
-                      </p>
-                    </div>
+                    <StatMini label="Thoughts" value={myComplaints.length} delay={0} />
+                    <StatMini label="UNI XP" value={user?.uni_xp || 0} delay={0.08} />
+                    <StatMini label="Streak" value={user?.streak || 0} suffix="d" delay={0.16} />
                   </div>
 
                   <div className="mt-4 pt-4 border-t border-[#6f7a5e]/20 dark:border-[#4a5c46]/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -253,10 +305,16 @@ export function DashboardPage() {
                     <Users className="w-4 h-4 text-[#5c6b4a] dark:text-[#8faa7a] shrink-0" />
                   </div>
                   <div className="space-y-2.5">
-                    {activeStudents.map(s => (
-                      <div key={s.id} className="flex items-center gap-2">
+                    {activeStudents.map((s, i) => (
+                      <motion.div
+                        key={s.id}
+                        initial={{ opacity: 0, x: -6 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.07 }}
+                        className="flex items-center gap-2"
+                      >
                         <div
-                          className={`w-8 h-8 rounded-full border border-[#6f7a5e]/35 dark:border-[#4a5c46]/50 bg-secondary flex items-center justify-center text-xs`}
+                          className="w-8 h-8 rounded-full border border-[#6f7a5e]/35 dark:border-[#4a5c46]/50 bg-secondary flex items-center justify-center text-xs"
                           style={{ fontWeight: 700 }}
                         >
                           {firstNameOnly(s.name).charAt(0)}
@@ -267,9 +325,12 @@ export function DashboardPage() {
                           </p>
                           <p className="text-[11px] text-muted-foreground font-mono">{s.uni_xp} XP</p>
                         </div>
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-500/30" title="Active" />
-                      </div>
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-500/30 animate-pulse" title="Active" />
+                      </motion.div>
                     ))}
+                    {activeStudents.length === 0 && (
+                      <p className="text-xs text-muted-foreground text-center py-4">No activity yet</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -295,13 +356,14 @@ export function DashboardPage() {
                 </Link>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-                {summaryCards.map(card => (
-                  <div key={card.label} className={`rounded-xl px-4 py-3 ${card.className}`}>
-                    <p className="text-[10px] font-mono uppercase tracking-wider opacity-80">{card.label}</p>
-                    <p className="text-2xl mt-1 tabular-nums" style={{ fontWeight: 700 }}>
-                      {card.value}
-                    </p>
-                  </div>
+                {summaryCards.map((card, i) => (
+                  <StatCard
+                    key={card.label}
+                    label={card.label}
+                    value={card.value}
+                    className={card.className}
+                    delay={i * 0.07}
+                  />
                 ))}
               </div>
             </div>
@@ -318,31 +380,54 @@ export function DashboardPage() {
               </div>
               <Link
                 to={paths.submit}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs border border-primary/20 shadow-sm"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs border border-primary/20 shadow-sm hover:bg-primary/90 transition-colors"
               >
                 <PlusCircle className="w-3.5 h-3.5" /> New
               </Link>
             </div>
             <div className="divide-y divide-border/80">
-              {myComplaints.slice(0, 4).map(c => (
-                <Link
-                  key={c.id}
-                  to={paths.complaint(c.id)}
-                  className="flex items-start sm:items-center gap-2 sm:gap-3 px-4 py-3 hover:bg-[#9faa8c]/10 dark:hover:bg-[#2a3528]/35 transition-colors"
-                >
-                  <div className="w-2 h-2 rounded-full bg-[#5c6b4a] dark:bg-[#8faa7a] shrink-0 mt-1.5 sm:mt-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm truncate" style={{ fontWeight: 600 }}>
-                      {c.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground font-mono">{c.category}</p>
-                  </div>
-                  <div className="hidden sm:flex items-center gap-2">
-                    <StatusBadge status={c.status} />
-                    <PriorityBadge priority={c.priority} />
-                  </div>
-                </Link>
-              ))}
+              <AnimatePresence initial={false}>
+                {myComplaints.slice(0, 4).length > 0 ? (
+                  myComplaints.slice(0, 4).map((c, i) => (
+                    <motion.div
+                      key={c.id}
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                    >
+                      <Link
+                        to={paths.complaint(c.id)}
+                        className="flex items-start sm:items-center gap-2 sm:gap-3 px-4 py-3 hover:bg-[#9faa8c]/10 dark:hover:bg-[#2a3528]/35 transition-colors"
+                      >
+                        <div className="w-2 h-2 rounded-full bg-[#5c6b4a] dark:bg-[#8faa7a] shrink-0 mt-1.5 sm:mt-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm truncate" style={{ fontWeight: 600 }}>
+                            {c.title}
+                          </p>
+                          <p className="text-xs text-muted-foreground font-mono">{c.category}</p>
+                        </div>
+                        <div className="hidden sm:flex items-center gap-2">
+                          <StatusBadge status={c.status} />
+                          <PriorityBadge priority={c.priority} />
+                        </div>
+                      </Link>
+                    </motion.div>
+                  ))
+                ) : (
+                  <motion.div
+                    key="empty"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="px-4 py-8 text-center text-sm text-muted-foreground"
+                  >
+                    No thoughts submitted yet.{' '}
+                    <Link to={paths.submit} className="text-primary hover:underline">
+                      Share your first →
+                    </Link>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </div>
@@ -363,34 +448,50 @@ export function DashboardPage() {
                   </div>
                 </div>
                 <span className="inline-flex items-center gap-1 text-[10px] font-mono uppercase text-emerald-600 dark:text-emerald-400 shrink-0">
-                  <CircleDot className="w-3 h-3" /> Live
+                  <CircleDot className="w-3 h-3 animate-pulse" /> Live
                 </span>
               </div>
               <div className="space-y-2 max-h-72 xl:max-h-none overflow-y-auto pr-0.5">
-                {liveFeed.map(item => (
-                  <div
-                    key={item.id}
-                    className={`rounded-xl border ${tactical.borderSoft} px-3 py-2 bg-background/50 hover:bg-[#9faa8c]/10 dark:hover:bg-[#2a3528]/30 transition-colors`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-xs truncate" style={{ fontWeight: 600 }}>
-                          {item.title}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5 font-mono">
-                          {firstNameOnly(item.user_name)} · {item.category}
-                        </p>
+                <AnimatePresence initial={false}>
+                  {liveFeed.map((item, i) => (
+                    <motion.div
+                      key={item.id}
+                      initial={{ opacity: 0, x: 8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -8 }}
+                      transition={{ delay: i * 0.05 }}
+                      className={`rounded-xl border ${tactical.borderSoft} px-3 py-2 bg-background/50 hover:bg-[#9faa8c]/10 dark:hover:bg-[#2a3528]/30 transition-colors`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-xs truncate" style={{ fontWeight: 600 }}>
+                            {item.title}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5 font-mono">
+                            {firstNameOnly(item.user_name)} · {item.category}
+                          </p>
+                        </div>
+                        <div className="hidden sm:block shrink-0">
+                          <StatusBadge status={item.status} />
+                        </div>
                       </div>
-                      <div className="hidden sm:block shrink-0">
-                        <StatusBadge status={item.status} />
+                      <div className="mt-1.5 text-[11px] text-muted-foreground inline-flex items-center gap-1 font-mono">
+                        <Clock3 className="w-3 h-3" />
+                        {formatDistanceToNow(new Date(item.updated_at), { addSuffix: true })}
                       </div>
-                    </div>
-                    <div className="mt-1.5 text-[11px] text-muted-foreground inline-flex items-center gap-1 font-mono">
-                      <Clock3 className="w-3 h-3" />
-                      {formatDistanceToNow(new Date(item.updated_at), { addSuffix: true })}
-                    </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+                {liveFeed.length === 0 && !isRefreshing && (
+                  <p className="text-xs text-muted-foreground text-center py-6">No activity yet</p>
+                )}
+                {isRefreshing && (
+                  <div className="space-y-2">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className={`rounded-xl border ${tactical.borderSoft} px-3 py-2 bg-muted/30 animate-pulse h-14`} />
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
               <div className="mt-3 pt-3 border-t border-[#6f7a5e]/25 dark:border-[#4a5c46]/35 grid grid-cols-2 gap-2">
                 <Link

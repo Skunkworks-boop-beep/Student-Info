@@ -14,10 +14,36 @@ import {
   getComplaintById,
   toggleComplaintUpvote,
 } from '../api/supabase-api';
+import { motion, AnimatePresence } from 'motion/react';
+import { useSound } from '../audio/sound-context';
+
+function LoadingSkeleton() {
+  return (
+    <div className="premium-page max-w-5xl space-y-4 animate-pulse">
+      <div className="h-4 w-28 bg-muted rounded-lg" />
+      <div className="premium-panel p-6 space-y-4">
+        <div className="h-6 w-2/3 bg-muted rounded-lg" />
+        <div className="h-4 w-1/3 bg-muted rounded-lg" />
+        <div className="flex gap-2">
+          <div className="h-6 w-20 bg-muted rounded-full" />
+          <div className="h-6 w-16 bg-muted rounded-full" />
+        </div>
+        <div className="space-y-2">
+          <div className="h-4 w-full bg-muted rounded" />
+          <div className="h-4 w-5/6 bg-muted rounded" />
+          <div className="h-4 w-4/6 bg-muted rounded" />
+        </div>
+      </div>
+      <div className="premium-panel p-6 h-32 bg-muted rounded-2xl" />
+      <div className="premium-panel p-6 h-48 bg-muted rounded-2xl" />
+    </div>
+  );
+}
 
 export function ComplaintDetailPage() {
   const { id } = useParams();
   const { user, backendMode } = useAuth();
+  const { play } = useSound();
   const supabase = getSupabaseClient();
   const cloud = backendMode === 'supabase';
 
@@ -26,6 +52,8 @@ export function ComplaintDetailPage() {
   const [loadError, setLoadError] = useState('');
   const [newComment, setNewComment] = useState('');
   const [busy, setBusy] = useState(false);
+  const [optimisticUpvoted, setOptimisticUpvoted] = useState<boolean | null>(null);
+  const [optimisticUpvotes, setOptimisticUpvotes] = useState<number | null>(null);
 
   const refresh = useCallback(async () => {
     if (!id) return;
@@ -46,6 +74,8 @@ export function ComplaintDetailPage() {
     try {
       const row = await getComplaintById(supabase, id, user?.id);
       setComplaint(row);
+      setOptimisticUpvoted(null);
+      setOptimisticUpvotes(null);
     } catch {
       setComplaint(null);
       setLoadError('Could not load this thought from Supabase.');
@@ -58,11 +88,7 @@ export function ComplaintDetailPage() {
     void refresh();
   }, [refresh]);
 
-  if (loading) {
-    return (
-      <div className="text-center py-16 text-muted-foreground text-sm">Loading thought…</div>
-    );
-  }
+  if (loading) return <LoadingSkeleton />;
 
   if (!complaint) {
     return (
@@ -73,20 +99,76 @@ export function ComplaintDetailPage() {
     );
   }
 
-  const canInteract = cloud && Boolean(user && supabase);
+  const canInteract = cloud ? Boolean(user && supabase) : true;
+  const displayUpvoted = optimisticUpvoted ?? complaint.upvoted_by_me;
+  const displayUpvotes = optimisticUpvotes ?? complaint.upvotes;
+
+  const handleUpvote = async () => {
+    if (!user) return;
+    play('tap');
+    const newUpvoted = !displayUpvoted;
+    setOptimisticUpvoted(newUpvoted);
+    setOptimisticUpvotes(displayUpvotes + (newUpvoted ? 1 : -1));
+    if (!cloud || !supabase) return;
+    setBusy(true);
+    try {
+      await toggleComplaintUpvote(supabase, complaint.id, user.id, complaint.upvoted_by_me);
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newComment.trim() || busy) return;
+    play('send');
+    setBusy(true);
+    if (!cloud || !supabase || !user) {
+      // local optimistic only
+      setComplaint(prev => prev ? {
+        ...prev,
+        comments: [...prev.comments, {
+          id: `local-${Date.now()}`,
+          user_id: user?.id ?? 'demo',
+          user_name: user?.name ?? 'You',
+          text: newComment.trim(),
+          parent_id: null,
+          created_at: new Date().toISOString(),
+        }],
+      } : prev);
+      setNewComment('');
+      setBusy(false);
+      play('success');
+      return;
+    }
+    try {
+      await addComplaintCommentRow(supabase, {
+        complaint_id: complaint.id,
+        user_id: user.id,
+        text: newComment.trim(),
+        parent_id: null,
+      });
+      setNewComment('');
+      await refresh();
+      play('success');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
-    <div className="premium-page max-w-5xl">
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+      className="premium-page max-w-5xl"
+    >
       <Link to={paths.complaints} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
         <ArrowLeft className="w-4 h-4" /> Back to thoughts
       </Link>
-      <p className="text-xs text-muted-foreground mt-2 mb-4">
-        {cloud
-          ? 'Live thread from Supabase — your votes and comments sync for everyone on this project.'
-          : 'Thread content loads from the local demo catalog. Connect Supabase for a shared live thread.'}
-      </p>
 
-      <div className="premium-panel p-6">
+      <div className="premium-panel p-6 mt-4">
         <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
           <div className="flex-1">
             <h1 className="text-xl mb-2" style={{ fontWeight: 700 }}>{complaint.title}</h1>
@@ -94,32 +176,26 @@ export function ComplaintDetailPage() {
               <span>{complaint.is_anonymous ? 'Anonymous' : firstNameOnly(complaint.user_name)}</span>
               <span>·</span>
               <span>{format(new Date(complaint.created_at), 'MMM d, yyyy')}</span>
-              <span>·</span>
-              <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{complaint.location}</span>
+              {complaint.location && (
+                <>
+                  <span>·</span>
+                  <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{complaint.location}</span>
+                </>
+              )}
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              disabled={!canInteract || busy}
-              onClick={async () => {
-                if (!canInteract || !user || !supabase) return;
-                setBusy(true);
-                try {
-                  await toggleComplaintUpvote(supabase, complaint.id, user.id, complaint.upvoted_by_me);
-                  await refresh();
-                } finally {
-                  setBusy(false);
-                }
-              }}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border transition-colors ${
-                complaint.upvoted_by_me ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:bg-accent'
-              } disabled:opacity-50`}
-            >
-              <ArrowUp className="w-4 h-4" />
-              <span className="text-sm" style={{ fontWeight: 600 }}>{complaint.upvotes}</span>
-            </button>
-          </div>
+          <motion.button
+            whileTap={{ scale: 0.88 }}
+            type="button"
+            disabled={!canInteract || busy}
+            onClick={() => void handleUpvote()}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border transition-colors ${
+              displayUpvoted ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:bg-accent'
+            } disabled:opacity-50`}
+          >
+            <ArrowUp className="w-4 h-4" />
+            <span className="text-sm tabular-nums" style={{ fontWeight: 600 }}>{displayUpvotes}</span>
+          </motion.button>
         </div>
 
         <div className="flex flex-wrap gap-2 mb-5">
@@ -162,61 +238,53 @@ export function ComplaintDetailPage() {
         </div>
 
         <div className="divide-y divide-border">
-          {complaint.comments.map(c => (
-            <div key={c.id} className={`p-5 ${c.parent_id ? 'ml-8 border-l-2 border-primary/20' : ''}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs" style={{ fontWeight: 600 }}>
-                  {firstNameOnly(c.user_name).charAt(0)}
+          <AnimatePresence initial={false}>
+            {complaint.comments.map(c => (
+              <motion.div
+                key={c.id}
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.18 }}
+                className={`p-5 ${c.parent_id ? 'ml-8 border-l-2 border-primary/20' : ''}`}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs" style={{ fontWeight: 600 }}>
+                    {firstNameOnly(c.user_name).charAt(0)}
+                  </div>
+                  <span className="text-sm" style={{ fontWeight: 500 }}>{firstNameOnly(c.user_name)}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}
+                  </span>
                 </div>
-                <span className="text-sm" style={{ fontWeight: 500 }}>{firstNameOnly(c.user_name)}</span>
-                <span className="text-xs text-muted-foreground">
-                  {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}
-                </span>
-              </div>
-              <p className="text-sm text-foreground/90 leading-relaxed">{c.text}</p>
-            </div>
-          ))}
+                <p className="text-sm text-foreground/90 leading-relaxed">{c.text}</p>
+              </motion.div>
+            ))}
+          </AnimatePresence>
 
           {complaint.comments.length === 0 && (
             <div className="p-8 text-center text-sm text-muted-foreground">No comments yet. Be the first!</div>
           )}
         </div>
 
-        <div className="p-4 border-t border-border">
+        <form onSubmit={handleComment} className="p-4 border-t border-border">
           <div className="flex gap-2">
             <input
               value={newComment}
               onChange={e => setNewComment(e.target.value)}
-              placeholder={canInteract ? 'Write a comment…' : 'Sign in with live backend to comment'}
-              disabled={!canInteract}
-              className="flex-1 px-4 py-2.5 rounded-xl bg-input-background border border-border focus:ring-2 focus:ring-primary/40 outline-none text-sm disabled:opacity-60"
+              placeholder="Write a comment…"
+              className="flex-1 px-4 py-2.5 rounded-xl bg-input-background border border-border focus:ring-2 focus:ring-primary/40 outline-none text-sm"
             />
-            <button
-              type="button"
-              disabled={!canInteract || !newComment.trim() || busy}
-              onClick={async () => {
-                if (!canInteract || !user || !supabase || !newComment.trim()) return;
-                setBusy(true);
-                try {
-                  await addComplaintCommentRow(supabase, {
-                    complaint_id: complaint.id,
-                    user_id: user.id,
-                    text: newComment.trim(),
-                    parent_id: null,
-                  });
-                  setNewComment('');
-                  await refresh();
-                } finally {
-                  setBusy(false);
-                }
-              }}
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              type="submit"
+              disabled={!newComment.trim() || busy}
               className="p-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               <Send className="w-4 h-4" />
-            </button>
+            </motion.button>
           </div>
-        </div>
+        </form>
       </div>
-    </div>
+    </motion.div>
   );
 }
